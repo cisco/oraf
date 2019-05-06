@@ -1,6 +1,8 @@
 # ORaF (Optimized Random Forest on Apache Spark)
 
-ORaF is a library which aims to improve the performance of distributed random forest training on large datasets in Spark MLlib. To optimize the training process, we introduce a local training phase in which we complete the tree induction of sufficiently small nodes in-memory on a single executor. Additionally, we group these nodes into larger and more balanced local training tasks using bin packing and effectively schedule the processing of these tasks into batches by computing their expected duration. Our algorithm speeds up the training process significantly (**~100x on our data**), enables the training of deeper decision trees and mitigates runtime memory issues.
+ORaF is a library which aims to improve the performance of distributed random forest training on large datasets in Spark MLlib. ORaF is a fork of the random forest algorithm in Mllib and as such has almost identical interface.
+
+To optimize the training process, we introduce a local training phase in which we complete the tree induction of sufficiently small nodes in-memory on a single executor. Additionally, we group these nodes into larger and more balanced local training tasks using bin packing and effectively schedule the processing of these tasks into batches by computing their expected duration. Our algorithm speeds up the training process significantly (**~100x on our data**), enables the training of deeper decision trees and mitigates runtime memory issues.
 
 A thorough explanation of the used methods and experiments can be found in [Distributed Algorithms for Decision Forest Training in the Network Traffic Classification Task](https://dspace.cvut.cz/bitstream/handle/10467/76092/F3-BP-2018-Starosta-Radek-thesis.pdf?sequence=-1&isAllowed=y) thesis.
 
@@ -72,7 +74,7 @@ These parameters can be set in the OptimizedForestStrategy object (RDD mllib int
 - customSplits (Array[Array[Double]])
     - The default discretization logic that is hardcoded into the current random forest implementation can work poorly on some datasets (i.e. when classes are highly imbalanced), so this allows the users to pass in their own precomputed threshold values for individual features.
 
-## Notable differences 
+## Notable differences between ORaF and algorithm in Apache Spark MLlib (2.4.0)
 
 ### Removal of ImpurityStats from final models
 
