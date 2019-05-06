@@ -4,7 +4,7 @@ ORaF is a library which aims to improve the performance of distributed random fo
 
 To optimize the training process, we introduce a local training phase in which we complete the tree induction of sufficiently small nodes in-memory on a single executor. Additionally, we group these nodes into larger and more balanced local training tasks using bin packing and effectively schedule the processing of these tasks into batches by computing their expected duration. Our algorithm speeds up the training process significantly (**~100x on our data**), enables the training of deeper decision trees and mitigates runtime memory issues.
 
-A thorough explanation of the used methods and experiments can be found in [Distributed Algorithms for Decision Forest Training in the Network Traffic Classification Task](https://dspace.cvut.cz/bitstream/handle/10467/76092/F3-BP-2018-Starosta-Radek-thesis.pdf?sequence=-1&isAllowed=y) thesis.
+A thorough explanation of the used methods and experiments can be found in authors' thesis: [Distributed Algorithms for Decision Forest Training in the Network Traffic Classification Task](https://dspace.cvut.cz/bitstream/handle/10467/76092/F3-BP-2018-Starosta-Radek-thesis.pdf?sequence=-1&isAllowed=y)
 
 ## Installation
 
