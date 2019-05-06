@@ -32,6 +32,7 @@ The interface is almost identical to the original RandomForestClassifier / Rando
     // testData is a Dataset with a "features" (ml.Vector) column, predictions are filled into a new "prediction" column 
     val dataWithPredictions = model.transform(testData)
 
+Note that ORaF is implemented in the org.apache.spark package structure because it has various package private dependencies to Spark MLlib. There are no naming conflicts with Spark. If there is demand, we will figure out how to address this better in future major versions. 
 
 ## Old MLlib interface example
 
