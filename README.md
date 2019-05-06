@@ -4,7 +4,15 @@ ORaF is a library which aims to improve the performance of distributed random fo
 
 To optimize the training process, we introduce a local training phase in which we complete the tree induction of sufficiently small nodes in-memory on a single executor. Additionally, we group these nodes into larger and more balanced local training tasks using bin packing and effectively schedule the processing of these tasks into batches by computing their expected duration. Our algorithm speeds up the training process significantly (**~100x on our data**), enables the training of deeper decision trees and mitigates runtime memory issues.
 
-A thorough explanation of the used methods and experiments can be found in authors' thesis: [Distributed Algorithms for Decision Forest Training in the Network Traffic Classification Task](https://dspace.cvut.cz/bitstream/handle/10467/76092/F3-BP-2018-Starosta-Radek-thesis.pdf?sequence=-1&isAllowed=y)
+### Benchmark
+
+A thorough explanation of the used methods and detailed experiments can be found in authors' thesis: [Distributed Algorithms for Decision Forest Training in the Network Traffic Classification Task](https://dspace.cvut.cz/bitstream/handle/10467/76092/F3-BP-2018-Starosta-Radek-thesis.pdf). 
+
+The following plot compares the performance of MLlib and ORaF on two datasets (10M rows and 30M rows) originating from network telemetry. Dimension of feature vectors was 357 and the rows were labeled into 153 classes which were strongly imbalanced. The experiment ran on an AWS EMR cluster of 11 r4.2xlarge instances and the measured times include data loading time (which should be constant for both methods). The experiment setup along with all hyperparameters is described in much greater detail in the thesis on pages 33-35.
+
+![MLlib vs ORaF benchmark showing 100-fold performance increase](img/mllib_oraf1.png?raw=true "MLlib vs ORaF benchmark showing 100-fold performance increase")
+
+For our use case ORaF is more than 100-fold faster than MLLib. We plan to perform additional experiments on sufficiently large public datasets in the near future.
 
 ## Installation
 
