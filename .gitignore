@@ -1,0 +1,48 @@
+# use glob syntax.
+syntax: glob
+*.ser
+*.class
+*~
+*.bak
+*.off
+*.old
+
+# eclipse conf file
+.settings
+.classpath
+.project
+.manager
+.idea
+
+# building
+target
+build
+null
+tmp
+temp
+dist
+test-output
+build.log
+pom.xml.releaseBackup
+release.properties
+TestJavaClass*.java
+interpolated-*.xml
+
+# other scm
+.svn
+.CVS
+.hg*
+
+# switch to regexp syntax.
+#  syntax: regexp
+#  ^\.pc/
+
+#SHITTY output not in target directory
+build.log
+
+# IDEA conf files
+*.iml
+*.ipr
+*.iws
+
+spark-warehouse
