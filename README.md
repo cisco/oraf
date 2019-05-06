@@ -33,9 +33,9 @@ The interface is almost identical to the original RandomForestClassifier / Rando
     val dataWithPredictions = model.transform(testData)
 
 
-## Old mllib interface example
+## Old MLlib interface example
 
-The training interface is again identical to the mllib RandomForest class (see [MLlib ensembles](https://spark.apache.org/docs/latest/mllib-ensembles.html)). This interface returns the same models as the new ml interface (OptimizedRandomForestClassificationModel / OptimizedRandomForestRegressionModel), as the old model is unable to store trees deeper than 30 levels because of node indexing.
+The training interface is again identical to the MLlib RandomForest class (see [MLlib ensembles](https://spark.apache.org/docs/latest/mllib-ensembles.html)). This interface returns the same models as the new ml interface (OptimizedRandomForestClassificationModel / OptimizedRandomForestRegressionModel), as the old model is unable to store trees deeper than 30 levels because of node indexing.
 
     import org.apache.spark.mllib.tree.configuration.OptimizedForestStrategy
     import org.apache.spark.mllib.tree.OptimizedRandomForest
@@ -61,7 +61,7 @@ The training interface is again identical to the mllib RandomForest class (see [
 
 ## Additional parameters
 
-These parameters can be set in the OptimizedForestStrategy object (RDD mllib interface), or in the OptimizedRandomForestClassifier / Regressor class (DataFrame ml interface).
+These parameters can be set in the OptimizedForestStrategy object (RDD MLlib interface), or in the OptimizedRandomForestClassifier / Regressor class (DataFrame ml interface).
 
 - maxMemoryMultiplier (Double)
     - This parameter affects the threshold deciding whether a task is small enough to be trained locally. It is used to multiply the estimate of the tasks memory consumption (the larger the value, the smaller the task has to be in order for it to be selected for local training). Default value is 4.0, which is very conservative. Increasing this parameter can also help balancing the tasks if your dataset isn't very large and the training doesn't utilize the cluster fully.
@@ -86,7 +86,7 @@ We have decided to remove the ImpurityStats objects in the finalized version of 
 
 As the trees are now eventually trained locally on one executor core, we no longer need to have a globally unique index for every node. This means we can theoretically train the complete subtree for every node, although this would probably be too time intensive for large datasets.
 
-Because the improved algorithm allows training trees deeper than 30 levels which cannot be represented in the 1.x version of the MLlib decision tree models, the old mllib interface also returns the new ml models, which include a convenience predict method for the old mllib Vectors. (see #mlexample)
+Because the improved algorithm allows training trees deeper than 30 levels which cannot be represented in the 1.x version of the MLlib decision tree models, the old MLlib interface also returns the new ml models, which include a convenience predict method for the old MLlib Vectors. (see #mlexample)
 
 ### NodeIdCache enabled by default
 
