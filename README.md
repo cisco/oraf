@@ -103,5 +103,5 @@ Additionally, our method relies heavily on the presence of NodeIdCache, which is
 
 ## Authors
 
-* Radek Starosta (rstarost@cisco.com, github: @rstarosta)
-* Jan Brabec (janbrabe@cisco.com, github: @BrabecJan, twitter: @BrabecJan91)
+* Radek Starosta (Cisco Cognitive Intelligence, rstarost@cisco.com, github: @rstarosta)
+* Jan Brabec (Cisco Cognitive Intelligence, janbrabe@cisco.com, github: @BrabecJan, twitter: @BrabecJan91)
