@@ -2,7 +2,7 @@
 
 ORaF is a library which aims to improve the performance of distributed random forest training on large datasets in Spark MLlib. ORaF is a fork of the random forest algorithm in Mllib and as such has almost identical interface.
 
-To optimize the training process, we introduce a local training phase in which we complete the tree induction of sufficiently small nodes in-memory on a single executor. Additionally, we group these nodes into larger and more balanced local training tasks using bin packing and effectively schedule the processing of these tasks into batches by computing their expected duration. Our algorithm speeds up the training process significantly (**~100x on our data**), enables the training of deeper decision trees and mitigates runtime memory issues which allows reliable horizontal scaling (we were able to train a model on billion rows).
+To optimize the training process, we introduce a local training phase with improved task scheduling. We complete the tree induction of sufficiently small nodes in-memory on a single executor. Additionally, we group these nodes into larger and more balanced local training tasks using bin packing and effectively schedule the processing of these tasks into batches by computing their expected duration. Our algorithm speeds up the training process significantly (**more than 100x**), enables the training of deeper decision trees and mitigates runtime memory issues which allows reliable horizontal scaling (we were able to train a model on billion rows).
 
 ## Benchmark
 
@@ -12,7 +12,7 @@ The following plot compares the performance of MLlib and ORaF on two datasets (1
 
 ![MLlib vs ORaF benchmark showing 100-fold performance increase](img/mllib_oraf1.png?raw=true "MLlib vs ORaF benchmark showing 100-fold performance increase")
 
-For our use case ORaF is more than 100-fold faster than MLLib. We plan to perform additional experiments on sufficiently large public datasets in the near future.
+ORaF is 40x faster than MLLib on the 10M dataset and more than 100x faster on the 30M dataset.
 
 ## Installation
 
