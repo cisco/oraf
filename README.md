@@ -24,7 +24,7 @@ Currently, ORaF depends and was tested on Apache Spark 2.4.0. We will try to upd
 
 ## Example
 
-The interface is almost identical to the original RandomForestClassifier / RandomForestRegressor classes (see [RandomForestClassifier](https://spark.apache.org/docs/latest/ml-classification-regression.html#random-forest-classifier)). It includes all of the fundamental methods for training, saving/loading models and inference, but we don't support computing classification probabilities and feature importance (see #impurity_stats)
+The interface is almost identical to the original RandomForestClassifier / RandomForestRegressor classes (see [RandomForestClassifier](https://spark.apache.org/docs/latest/ml-classification-regression.html#random-forest-classifier)). It includes all of the fundamental methods for training, saving/loading models and inference, but we don't support computing classification probabilities and feature importance (see [Removal of ImpurityStats](#removal-of-impuritystats-from-final-models)).
 
     import org.apache.spark.ml.classification.OptimizedRandomForestClassifier
     
@@ -75,7 +75,7 @@ These parameters can be set in the OptimizedForestStrategy object (RDD MLlib int
 - maxMemoryMultiplier (Double)
     - This parameter affects the threshold deciding whether a task is small enough to be trained locally. It is used to multiply the estimate of the tasks memory consumption (the larger the value, the smaller the task has to be for it to be selected for local training). The default value is 4.0, which is very conservative. Increasing this parameter can also help to balance the tasks if your dataset isn't very large and the training doesn't utilize the cluster fully.
 - timePredictionStrategy (TimePredictionStrategy)
-    - The logic behind the task scheduling. By default, the tasks are sorted by the number of data points, which works well in most cases. During our experiments, we found that the entropy in the given node also plays a significant role in the final training time of the nodes, so in our in-house implementation, we use a linear regressor combining both task size and entropy (see #thesis).
+    - The logic behind the task scheduling. By default, the tasks are sorted by the number of data points, which works well in most cases. During our experiments, we found that the entropy in the given node also plays a significant role in the final training time of the nodes, so in our in-house implementation, we use a linear regressor combining both task size and entropy (see [thesis](#benchmark)).
 - localTrainingAlgorithm (LocalTrainingAlgorithm)
     - Implementation of the local decision tree training. Default is an implementation by Siddharth Murching ([smurching](https://github.com/smurching), [SPARK-3162](https://github.com/apache/spark/pull/19433)) which is based on the Yggdrasil algorithm. In the current state, this implementation is probably not the most efficient solution, because it doesn't fully utilize the advantages of the columnar format, but still requires the data to be transformed into it.
 - maxTasksPerBin (Int)
@@ -95,7 +95,7 @@ We have decided to remove the ImpurityStats objects in the finalized version of 
 
 As the trees are now eventually trained locally on one executor core, we no longer need to have a globally unique index for every node. Therefore, we can theoretically train the entire subtree for every node, although this would probably be too time intensive for large datasets.
 
-Because the improved algorithm allows training trees deeper than 30 levels which cannot be represented in the 1.x version of the MLlib decision tree models, the old MLlib interface also returns the new ml models, which include a convenience predict method for the old MLlib Vectors. (see #mlexample)
+Because the improved algorithm allows training trees deeper than 30 levels which cannot be represented in the 1.x version of the MLlib decision tree models, the old MLlib interface also returns the new ml models, which include a convenience predict method for the old MLlib Vectors. (see [mllib example](#old-mllib-interface-example))
 
 ### NodeIdCache enabled by default
 
