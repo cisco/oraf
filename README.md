@@ -8,7 +8,7 @@ To optimize the training process, we introduce a local training phase with impro
 
 A thorough explanation of the used methods and detailed experiments can be found in authors' thesis: [Distributed Algorithms for Decision Forest Training in the Network Traffic Classification Task](https://dspace.cvut.cz/bitstream/handle/10467/76092/F3-BP-2018-Starosta-Radek-thesis.pdf). 
 
-The following plot compares the performance of MLlib and ORaF on two datasets (10M rows and 30M rows) originating from network telemetry. Dimension of feature vectors was 357 and the rows were labeled into 153 classes which were strongly imbalanced. The experiment ran on an AWS EMR cluster of 11 r4.2xlarge instances and the measured times include data loading time (which should be constant for both methods). The experiment setup along with all hyperparameters is described in much greater detail in the thesis on pages 33-35.
+The following plot compares the performance of MLlib and ORaF on two datasets (10M rows and 30M rows) originating from network telemetry. Dimension of feature vectors was 357 and the rows were labeled into 153 classes which were strongly imbalanced. The experiment ran on an AWS EMR cluster of 11 r4.2xlarge instances and the experiment setup along with all hyperparameters is described in much greater detail in the thesis on pages 33-35.
 
 ![MLlib vs ORaF benchmark showing 100-fold performance increase](img/mllib_oraf1.png?raw=true "MLlib vs ORaF benchmark showing 100-fold performance increase")
 
