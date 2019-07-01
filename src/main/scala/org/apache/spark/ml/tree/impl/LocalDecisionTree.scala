@@ -38,10 +38,10 @@ class LocalDecisionTree extends LocalTrainingAlgorithm {
    * @param splits splits(i) = array of splits for feature i
    */
   def fitNode(
-                           input: Array[TreePoint],
+                           input: Array[OptimizedTreePoint],
                            instanceWeights: Array[Double],
                            node: OptimizedLearningNode,
-                           metadata: DecisionTreeMetadata,
+                           metadata: OptimizedDecisionTreeMetadata,
                            splits: Array[Array[Split]],
                            maxDepthOverride: Option[Int] = None,
                            prune: Boolean = true): OptimizedNode = {
@@ -86,7 +86,7 @@ class LocalDecisionTree extends LocalTrainingAlgorithm {
                                   colStoreInit: Array[Array[Int]],
                                   instanceWeights: Array[Double],
                                   labels: Array[Double],
-                                  metadata: DecisionTreeMetadata,
+                                  metadata: OptimizedDecisionTreeMetadata,
                                   splits: Array[Array[Split]],
                                   maxDepth: Int): OptimizedLearningNode = {
 
@@ -134,7 +134,7 @@ class LocalDecisionTree extends LocalTrainingAlgorithm {
   /**
    * Iterate over feature values and labels for a specific (node, feature), updating stats
    * aggregator for the current node.
-   */ private[impl] def updateAggregator( statsAggregator: DTStatsAggregator, col: FeatureColumn, indices: Array[Int], instanceWeights: Array[Double],
+   */ private[impl] def updateAggregator( statsAggregator: OptimizedDTStatsAggregator, col: FeatureColumn, indices: Array[Int], instanceWeights: Array[Double],
       labels: Array[Double],
       from: Int,
       to: Int,
@@ -167,7 +167,7 @@ class LocalDecisionTree extends LocalTrainingAlgorithm {
       trainingInfo: TrainingInfo,
       instanceWeights: Array[Double],
       labels: Array[Double],
-      metadata: DecisionTreeMetadata,
+      metadata: OptimizedDecisionTreeMetadata,
       splits: Array[Array[Split]],
       rng: Random): Array[OptimizedLearningNode] = {
     // For each node, select the best split across all features
@@ -199,7 +199,7 @@ class LocalDecisionTree extends LocalTrainingAlgorithm {
             val col = columns(featureIndex)
             // Create a DTStatsAggregator to hold label statistics for each bin of the current
             // feature & compute said label statistics
-            val statsAggregator = new DTStatsAggregator(metadata, Some(Array(featureIndex)))
+            val statsAggregator = new OptimizedDTStatsAggregator(metadata, Some(Array(featureIndex)))
             updateAggregator(statsAggregator, col, trainingInfo.indices, instanceWeights,
               labels, from, to, featureIndexIdx = 0, splits(col.featureIndex))
             // Choose best split for current feature based on label statistics
@@ -225,7 +225,7 @@ class LocalDecisionTree extends LocalTrainingAlgorithm {
    */
   private[impl] def splitIfPossible(
                                      node: OptimizedLearningNode,
-                                     metadata: DecisionTreeMetadata,
+                                     metadata: OptimizedDecisionTreeMetadata,
                                      stats: ImpurityStats,
                                      split: Split): Iterator[OptimizedLearningNode] = {
     if (stats.valid) {

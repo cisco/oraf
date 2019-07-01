@@ -106,7 +106,10 @@ class OptimizedDecisionTreeClassifier @Since("1.4.0") (
 
   /** @group setParam */
   @Since("2.0.0")
-  override def setTimePredictionStrategy(value: TimePredictionStrategy) = timePredictionStrategy = value
+  override def setTimePredictionStrategy(value: TimePredictionStrategy): this.type = {
+    timePredictionStrategy = value
+    this
+  }
 
   /** @group setParam */
   @Since("2.0.0")
@@ -115,11 +118,17 @@ class OptimizedDecisionTreeClassifier @Since("1.4.0") (
 
   /** @group setParam */
   @Since("2.0.0")
-  override def setCustomSplits(value: Option[Array[Array[Double]]]) = customSplits = value
+  override def setCustomSplits(value: Option[Array[Array[Double]]]): this.type = {
+    customSplits = value
+    this
+  }
 
   /** @group setParam */
   @Since("2.0.0")
-  override def setLocalTrainingAlgorithm(value: LocalTrainingAlgorithm) = localTrainingAlgorithm = value
+  override def setLocalTrainingAlgorithm(value: LocalTrainingAlgorithm): this.type = {
+    localTrainingAlgorithm = value
+    this
+  }
 
   override protected def train(dataset: Dataset[_]): OptimizedDecisionTreeClassificationModel = instrumented { instr =>
     instr.logPipelineStage(this)
@@ -206,11 +215,11 @@ class OptimizedDecisionTreeClassificationModel private[ml] (
     this(Identifiable.randomUID("dtc"), rootNode, numFeatures, numClasses)
 
   override def predict(features: Vector): Double = {
-    rootNode.predictImpl(features).prediction
+    rootNode.predict(features)
   }
 
   def predict(features: OldVector): Double = {
-    rootNode.predictImpl(Vectors.dense(features.toArray)).prediction
+    rootNode.predict(Vectors.dense(features.toArray))
   }
 
   def oldPredict(vector: OldVector): Double = {
@@ -244,7 +253,7 @@ class OptimizedDecisionTreeClassificationModel private[ml] (
   // TODO: Make sure this is correct
   override protected def predictRaw(features: Vector): Vector = {
     val predictions = Array.fill[Double](numClasses)(0.0)
-    predictions(rootNode.predictImpl(features).prediction.toInt) = 1.0
+    predictions(rootNode.predict(features).toInt) = 1.0
 
     Vectors.dense(predictions)
   }

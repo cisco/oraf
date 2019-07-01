@@ -125,7 +125,10 @@ class OptimizedRandomForestClassifier @Since("1.4.0") (
 
   /** @group setParam */
   @Since("2.0.0")
-  override def setTimePredictionStrategy(value: TimePredictionStrategy) = timePredictionStrategy = value
+  override def setTimePredictionStrategy(value: TimePredictionStrategy): this.type= {
+    timePredictionStrategy = value
+    this
+  }
 
   /** @group setParam */
   @Since("2.0.0")
@@ -134,11 +137,17 @@ class OptimizedRandomForestClassifier @Since("1.4.0") (
 
   /** @group setParam */
   @Since("2.0.0")
-  override def setCustomSplits(value: Option[Array[Array[Double]]]) = customSplits = value
+  override def setCustomSplits(value: Option[Array[Array[Double]]]): this.type = {
+    customSplits = value
+    this
+  }
 
   /** @group setParam */
   @Since("2.0.0")
-  override def setLocalTrainingAlgorithm(value: LocalTrainingAlgorithm) = localTrainingAlgorithm = value
+  override def setLocalTrainingAlgorithm(value: LocalTrainingAlgorithm): this.type = {
+    localTrainingAlgorithm = value
+    this
+  }
 
   override protected def train(dataset: Dataset[_]): OptimizedRandomForestClassificationModel = instrumented { instr =>
     instr.logPipelineStage(this)
@@ -233,7 +242,7 @@ class OptimizedRandomForestClassificationModel private[spark] (
 
   override protected def transformImpl(dataset: Dataset[_]): DataFrame = {
     val bcastModel = dataset.sparkSession.sparkContext.broadcast(this)
-    val predictUDF = udf { (features: Any) =>
+    val predictUDF = udf { features: Any =>
       bcastModel.value.predict(features.asInstanceOf[Vector])
     }
     dataset.withColumn($(predictionCol), predictUDF(col($(featuresCol))))
@@ -245,7 +254,7 @@ class OptimizedRandomForestClassificationModel private[spark] (
     // Ignore the tree weights since all are 1.0 for now.
     val votes = Array.fill[Double](numClasses)(0.0)
     _trees.view.foreach { tree =>
-      votes(tree.rootNode.predictImpl(features).prediction.toInt) += 1
+      votes(tree.rootNode.predict(features).toInt) += 1
     }
     Vectors.dense(votes)
   }

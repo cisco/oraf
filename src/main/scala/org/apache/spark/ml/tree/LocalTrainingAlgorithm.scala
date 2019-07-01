@@ -16,14 +16,14 @@
 
 package org.apache.spark.ml.tree
 
-import org.apache.spark.ml.tree.impl.{DecisionTreeMetadata, TreePoint}
+import org.apache.spark.ml.tree.impl.{OptimizedDecisionTreeMetadata, OptimizedTreePoint}
 
 trait LocalTrainingAlgorithm extends Serializable {
 
-  def fitNode(input: Array[TreePoint],
+  def fitNode(input: Array[OptimizedTreePoint],
               instanceWeights: Array[Double],
               node: OptimizedLearningNode,
-              metadata: DecisionTreeMetadata,
+              metadata: OptimizedDecisionTreeMetadata,
               splits: Array[Array[Split]],
               maxDepthOverride: Option[Int] = None,
               prune: Boolean = true): OptimizedNode

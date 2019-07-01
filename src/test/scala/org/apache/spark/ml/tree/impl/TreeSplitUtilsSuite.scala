@@ -33,14 +33,14 @@ class TreeSplitUtilsSuite
    * with the data from the specified training points.
    */
   private def getAggregator(
-      metadata: DecisionTreeMetadata,
+      metadata: OptimizedDecisionTreeMetadata,
       col: FeatureColumn,
       from: Int,
       to: Int,
       labels: Array[Double],
-      featureSplits: Array[Split]): DTStatsAggregator = {
+      featureSplits: Array[Split]): OptimizedDTStatsAggregator = {
 
-    val statsAggregator = new DTStatsAggregator(metadata, featureSubset = None)
+    val statsAggregator = new OptimizedDTStatsAggregator(metadata, featureSubset = None)
     val instanceWeights = Array.fill[Double](col.values.length)(1.0)
     val indices = col.values.indices.toArray
     AggUpdateUtils.updateParentImpurity(statsAggregator, indices, from, to, instanceWeights, labels)

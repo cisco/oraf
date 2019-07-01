@@ -27,7 +27,7 @@ private[impl] object SplitUtils extends Logging {
 
   /** Sorts ordered feature categories by label centroid, returning an ordered list of categories */
   private def sortByCentroid(
-      binAggregates: DTStatsAggregator,
+      binAggregates: OptimizedDTStatsAggregator,
       featureIndex: Int,
       featureIndexIdx: Int): List[Int] = {
     /* Each bin is one category (feature value).
@@ -67,7 +67,7 @@ private[impl] object SplitUtils extends Logging {
    *          ImpurityStats instance will be invalid (have member valid = false).
    */
   private[impl] def chooseUnorderedCategoricalSplit(
-      binAggregates: DTStatsAggregator,
+      binAggregates: OptimizedDTStatsAggregator,
       featureIndex: Int,
       featureIndexIdx: Int,
       featureSplits: Array[Split],
@@ -97,7 +97,7 @@ private[impl] object SplitUtils extends Logging {
    *          returned ImpurityStats instance will be invalid (have member valid = false)
    */
   private[impl] def chooseContinuousSplit(
-      binAggregates: DTStatsAggregator,
+      binAggregates: OptimizedDTStatsAggregator,
       featureIndex: Int,
       featureIndexIdx: Int,
       featureSplits: Array[Split],
@@ -116,7 +116,7 @@ private[impl] object SplitUtils extends Logging {
    * @param parentCalculator Optional: ImpurityCalculator containing impurity stats for current node
    */
   private def orderedSplitHelper(
-      binAggregates: DTStatsAggregator,
+      binAggregates: OptimizedDTStatsAggregator,
       featureIndex: Int,
       featureIndexIdx: Int,
       categoriesSortedByCentroid: List[Int],
@@ -156,7 +156,7 @@ private[impl] object SplitUtils extends Logging {
    * @param parentCalculator Optional: ImpurityCalculator containing impurity stats for current node
    */
   private[impl] def chooseOrderedCategoricalSplit(
-      binAggregates: DTStatsAggregator,
+      binAggregates: OptimizedDTStatsAggregator,
       featureIndex: Int,
       featureIndexIdx: Int,
       parentCalculator: Option[ImpurityCalculator] = None): (Split, ImpurityStats) = {
@@ -182,7 +182,7 @@ private[impl] object SplitUtils extends Logging {
    *          ImpurityStats will have member stats.valid = false.
    */
   private[impl] def chooseSplit(
-      statsAggregator: DTStatsAggregator,
+      statsAggregator: OptimizedDTStatsAggregator,
       featureIndex: Int,
       featureIndexIdx: Int,
       featureSplits: Array[Split],

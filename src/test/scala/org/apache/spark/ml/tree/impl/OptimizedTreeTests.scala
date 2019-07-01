@@ -113,7 +113,7 @@ private[ml] object OptimizedTreeTests extends SparkFunSuite {
       numClasses: Int,
       featureArity: Map[Int, Int],
       impurity: Impurity = Entropy,
-      unorderedFeatures: Option[Set[Int]] = None): DecisionTreeMetadata = {
+      unorderedFeatures: Option[Set[Int]] = None): OptimizedDecisionTreeMetadata = {
     // By default, assume all categorical features within tests
     // have small enough arity to be treated as unordered
     val unordered = unorderedFeatures.getOrElse(featureArity.keys.toSet)
@@ -128,7 +128,7 @@ private[ml] object OptimizedTreeTests extends SparkFunSuite {
       }
     }
 
-    new DecisionTreeMetadata(numFeatures = numFeatures, numExamples = numExamples,
+    new OptimizedDecisionTreeMetadata(numFeatures = numFeatures, numExamples = numExamples,
       numClasses = numClasses, maxBins = maxBins, minInfoGain = 0.0, featureArity = featureArity,
       unorderedFeatures = unordered, numBins = numBins, impurity = impurity,
       quantileStrategy = null, maxDepth = 5, minInstancesPerNode = 1, numTrees = 1,

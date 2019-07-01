@@ -108,7 +108,7 @@ private[spark] object OptimizedRandomForest extends Logging {
 
     val retaggedInput = input.retag(classOf[LabeledPoint])
     val metadata =
-      DecisionTreeMetadata.buildMetadata(retaggedInput, strategy, numTrees, featureSubsetStrategy)
+      OptimizedDecisionTreeMetadata.buildMetadata(retaggedInput, strategy, numTrees, featureSubsetStrategy)
     instr match {
       case Some(instrumentation) =>
         instrumentation.logNumFeatures(metadata.numFeatures)
@@ -146,7 +146,7 @@ private[spark] object OptimizedRandomForest extends Logging {
 
     // Bin feature values (TreePoint representation).
     // Cache input RDD for speedup during multiple passes.
-    val treeInput = TreePoint.convertToTreeRDD(retaggedInput, splits, metadata)
+    val treeInput = OptimizedTreePoint.convertToTreeRDD(retaggedInput, splits, metadata)
 
     val withReplacement = numTrees > 1
 
@@ -171,7 +171,7 @@ private[spark] object OptimizedRandomForest extends Logging {
     // Create an RDD of node Id cache.
     // At first, all the rows belong to the root nodes (node Id == 1).
     val nodeIdCache = if (strategy.useNodeIdCache) {
-      Some(NodeIdCache.init(
+      Some(OptimizedNodeIdCache.init(
         data = baggedInput,
         numTrees = numTrees,
         checkpointInterval = strategy.checkpointInterval,
@@ -290,7 +290,7 @@ private[spark] object OptimizedRandomForest extends Logging {
      *
      * @return (baggedPoint, nodeIdArray)
      */
-    def getNodeIdsForPoints: RDD[(BaggedPoint[TreePoint], Array[Int])] = {
+    def getNodeIdsForPoints: RDD[(BaggedPoint[OptimizedTreePoint], Array[Int])] = {
       if (nodeIdCache.nonEmpty) {
         baggedInput.zip(nodeIdCache.get.nodeIdsForInstances)
       } else {
@@ -310,7 +310,7 @@ private[spark] object OptimizedRandomForest extends Logging {
      * @return RDD((treeId, nodeId), (treePoint, sampleWeight))
      */
     def filterDataInBatch(batch: Seq[LocalTrainingBin],
-                          pointsWithNodeIds: RDD[(BaggedPoint[TreePoint], Array[Int])]) = {
+                          pointsWithNodeIds: RDD[(BaggedPoint[OptimizedTreePoint], Array[Int])]) = {
       val nodeSets: Map[Int, Seq[Int]] = getNodesForTrees(batch)
       val nodeSetsBc = baggedInput.sparkContext.broadcast(nodeSets)
 
@@ -332,7 +332,7 @@ private[spark] object OptimizedRandomForest extends Logging {
      * @return partitioned data
      */
     def partitionByBin(batch: Seq[LocalTrainingBin],
-                       filtered: RDD[((Int, Int), (TreePoint, Double))]) = {
+                       filtered: RDD[((Int, Int), (OptimizedTreePoint, Double))]) = {
       val treeNodeMapping = batch.zipWithIndex.flatMap {
         case (bin, partitionIndex) =>
           bin.tasks.map(task => ((task.treeIndex, task.node.id), partitionIndex))
@@ -347,7 +347,7 @@ private[spark] object OptimizedRandomForest extends Logging {
      *
      * @return
      */
-    def runLocalTraining(partitioned: RDD[((Int, Int), (TreePoint, Double))]) = {
+    def runLocalTraining(partitioned: RDD[((Int, Int), (OptimizedTreePoint, Double))]) = {
       partitioned
         .mapPartitions(partition => {
           partition.toSeq
@@ -365,7 +365,7 @@ private[spark] object OptimizedRandomForest extends Logging {
      * Run local training and collect statistics about the training duration and data size.
      * @return
      */
-    def trainNodeLocally(treeIndex: Int, nodeIndex: Int, points: Seq[(TreePoint, Double)]) = {
+    def trainNodeLocally(treeIndex: Int, nodeIndex: Int, points: Seq[(OptimizedTreePoint, Double)]) = {
       val startTime = System.nanoTime()
       val pointArray = points.map(_._1).toArray
       val instanceWeights = points.map(_._2).toArray
@@ -493,8 +493,8 @@ private[spark] object OptimizedRandomForest extends Logging {
    * @param instanceWeight  Weight (importance) of instance in dataset.
    */
   private def mixedBinSeqOp(
-      agg: DTStatsAggregator,
-      treePoint: TreePoint,
+      agg: OptimizedDTStatsAggregator,
+      treePoint: OptimizedTreePoint,
       splits: Array[Array[Split]],
       unorderedFeatures: Set[Int],
       instanceWeight: Double,
@@ -539,8 +539,8 @@ private[spark] object OptimizedRandomForest extends Logging {
    * @param instanceWeight  Weight (importance) of instance in dataset.
    */
   private def orderedBinSeqOp(
-      agg: DTStatsAggregator,
-      treePoint: TreePoint,
+      agg: OptimizedDTStatsAggregator,
+      treePoint: OptimizedTreePoint,
       instanceWeight: Double,
       featuresForNode: Option[Array[Int]]): Unit = {
     val label = treePoint.label
@@ -587,8 +587,8 @@ private[spark] object OptimizedRandomForest extends Logging {
    *                    the node stat aggregation phase.
    */
   private[tree] def findBestSplits(
-                                    input: RDD[BaggedPoint[TreePoint]],
-                                    metadata: DecisionTreeMetadata,
+                                    input: RDD[BaggedPoint[OptimizedTreePoint]],
+                                    metadata: OptimizedDecisionTreeMetadata,
                                     topNodesForGroup: Map[Int, OptimizedLearningNode],
                                     nodesForGroup: Map[Int, Array[OptimizedLearningNode]],
                                     treeToNodeToIndexInfo: Map[Int, Map[Int, NodeIndexInfo]],
@@ -597,7 +597,7 @@ private[spark] object OptimizedRandomForest extends Logging {
                                              mutable.ListBuffer[LocalTrainingTask]),
                                     limits: TrainingLimits,
                                     timer: TimeTracker = new TimeTracker,
-                                    nodeIdCache: Option[NodeIdCache] = None): Unit = {
+                                    nodeIdCache: Option[OptimizedNodeIdCache] = None): Unit = {
 
     /*
      * The high-level descriptions of the best split optimizations are noted here.
@@ -648,8 +648,8 @@ private[spark] object OptimizedRandomForest extends Logging {
     def nodeBinSeqOp(
         treeIndex: Int,
         nodeInfo: NodeIndexInfo,
-        agg: Array[DTStatsAggregator],
-        baggedPoint: BaggedPoint[TreePoint]): Unit = {
+        agg: Array[OptimizedDTStatsAggregator],
+        baggedPoint: BaggedPoint[OptimizedTreePoint]): Unit = {
       if (nodeInfo != null) {
         val aggNodeIndex = nodeInfo.nodeIndexInGroup
         val featuresForNode = nodeInfo.featureSubset
@@ -676,8 +676,8 @@ private[spark] object OptimizedRandomForest extends Logging {
      * @return  agg
      */
     def binSeqOp(
-        agg: Array[DTStatsAggregator],
-        baggedPoint: BaggedPoint[TreePoint]): Array[DTStatsAggregator] = {
+        agg: Array[OptimizedDTStatsAggregator],
+        baggedPoint: BaggedPoint[OptimizedTreePoint]): Array[OptimizedDTStatsAggregator] = {
       treeToNodeToIndexInfo.foreach { case (treeIndex, nodeIndexToInfo) =>
         val nodeIndex =
           topNodesForGroup(treeIndex).predictImpl(baggedPoint.datum.binnedFeatures, splits)
@@ -690,8 +690,8 @@ private[spark] object OptimizedRandomForest extends Logging {
      * Do the same thing as binSeqOp, but with nodeIdCache.
      */
     def binSeqOpWithNodeIdCache(
-        agg: Array[DTStatsAggregator],
-        dataPoint: (BaggedPoint[TreePoint], Array[Int])): Array[DTStatsAggregator] = {
+        agg: Array[OptimizedDTStatsAggregator],
+        dataPoint: (BaggedPoint[OptimizedTreePoint], Array[Int])): Array[OptimizedDTStatsAggregator] = {
       treeToNodeToIndexInfo.foreach { case (treeIndex, nodeIndexToInfo) =>
         val baggedPoint = dataPoint._1
         val nodeIdCache = dataPoint._2
@@ -755,7 +755,7 @@ private[spark] object OptimizedRandomForest extends Logging {
     val nodeToFeatures = getNodeToFeatures(treeToNodeToIndexInfo)
     val nodeToFeaturesBc = input.sparkContext.broadcast(nodeToFeatures)
 
-    val partitionAggregates: RDD[(Int, DTStatsAggregator)] = if (nodeIdCache.nonEmpty) {
+    val partitionAggregates: RDD[(Int, OptimizedDTStatsAggregator)] = if (nodeIdCache.nonEmpty) {
       input.zip(nodeIdCache.get.nodeIdsForInstances).mapPartitions { points =>
         // Construct a nodeStatsAggregators array to hold node aggregate stats,
         // each node will have a nodeStatsAggregator
@@ -763,7 +763,7 @@ private[spark] object OptimizedRandomForest extends Logging {
           val featuresForNode = nodeToFeaturesBc.value.map { nodeToFeatures =>
             nodeToFeatures(nodeIndex)
           }
-          new DTStatsAggregator(metadata, featuresForNode)
+          new OptimizedDTStatsAggregator(metadata, featuresForNode)
         }
 
         // iterator all instances in current partition and update aggregate stats
@@ -781,7 +781,7 @@ private[spark] object OptimizedRandomForest extends Logging {
           val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
             Some(nodeToFeatures(nodeIndex))
           }
-          new DTStatsAggregator(metadata, featuresForNode)
+          new OptimizedDTStatsAggregator(metadata, featuresForNode)
         }
 
         // iterator all instances in current partition and update aggregate stats
@@ -884,7 +884,7 @@ private[spark] object OptimizedRandomForest extends Logging {
    * (features with 0 splits)
    */
   private[impl] def getFeaturesWithSplits(
-      metadata: DecisionTreeMetadata,
+      metadata: OptimizedDecisionTreeMetadata,
       featuresForNode: Option[Array[Int]]): SeqView[(Int, Int), Seq[_]] = {
     Range(0, metadata.numFeaturesPerNode).view.map { featureIndexIdx =>
       featuresForNode.map(features => (featureIndexIdx, features(featureIndexIdx)))
@@ -896,7 +896,7 @@ private[spark] object OptimizedRandomForest extends Logging {
 
   private[impl] def getBestSplitByGain(
       parentImpurityCalculator: ImpurityCalculator,
-      metadata: DecisionTreeMetadata,
+      metadata: OptimizedDecisionTreeMetadata,
       featuresForNode: Option[Array[Int]],
       splitsAndImpurityInfo: Seq[(Split, ImpurityStats)]): (Split, ImpurityStats) = {
     val (bestSplit, bestSplitStats) =
@@ -926,7 +926,7 @@ private[spark] object OptimizedRandomForest extends Logging {
    * @return tuple for best split: (Split, information gain, prediction at node)
    */
   private[tree] def binsToBestSplit(
-      binAggregates: DTStatsAggregator,
+      binAggregates: OptimizedDTStatsAggregator,
       splits: Array[Array[Split]],
       featuresForNode: Option[Array[Int]],
       node: OptimizedLearningNode): (Split, ImpurityStats) = {
@@ -943,7 +943,7 @@ private[spark] object OptimizedRandomForest extends Logging {
   }
 
   private[impl] def findUnorderedSplits(
-      metadata: DecisionTreeMetadata,
+      metadata: OptimizedDecisionTreeMetadata,
       featureIndex: Int): Array[Split] = {
     // Unordered features
     // 2^(maxFeatureValue - 1) - 1 combinations
@@ -983,7 +983,7 @@ private[spark] object OptimizedRandomForest extends Logging {
    */
   protected[tree] def findSplits(
       input: RDD[LabeledPoint],
-      metadata: DecisionTreeMetadata,
+      metadata: OptimizedDecisionTreeMetadata,
       seed: Long): Array[Array[Split]] = {
 
     logDebug("isMulticlass = " + metadata.isMulticlass)
@@ -1011,7 +1011,7 @@ private[spark] object OptimizedRandomForest extends Logging {
 
   private def findSplitsBySorting(
       input: RDD[LabeledPoint],
-      metadata: DecisionTreeMetadata,
+      metadata: OptimizedDecisionTreeMetadata,
       continuousFeatures: IndexedSeq[Int]): Array[Array[Split]] = {
 
     val continuousSplits: scala.collection.Map[Int, Array[Split]] = {
@@ -1088,7 +1088,7 @@ private[spark] object OptimizedRandomForest extends Logging {
    */
   private[tree] def findSplitsForContinuousFeature(
       featureSamples: Iterable[Double],
-      metadata: DecisionTreeMetadata,
+      metadata: OptimizedDecisionTreeMetadata,
       featureIndex: Int): Array[Double] = {
     require(metadata.isContinuous(featureIndex),
       "findSplitsForContinuousFeature can only be used to find splits for a continuous feature.")
@@ -1175,7 +1175,7 @@ private[spark] object OptimizedRandomForest extends Logging {
   private[tree] def selectNodesToSplit(
                                         nodeStack: mutable.ArrayStack[(Int, OptimizedLearningNode)],
                                         maxMemoryUsage: Long,
-                                        metadata: DecisionTreeMetadata,
+                                        metadata: OptimizedDecisionTreeMetadata,
                                         rng: Random)
     : (Map[Int, Array[OptimizedLearningNode]], Map[Int, Map[Int, NodeIndexInfo]]) = {
     // Collect some nodes to split:
@@ -1233,7 +1233,7 @@ private[spark] object OptimizedRandomForest extends Logging {
    *                       If None, then use all features.
    */
   private def aggregateSizeForNode(
-      metadata: DecisionTreeMetadata,
+      metadata: OptimizedDecisionTreeMetadata,
       featureSubset: Option[Array[Int]]): Long = {
     val totalBins = if (featureSubset.nonEmpty) {
       featureSubset.get.map(featureIndex => metadata.numBins(featureIndex).toLong).sum

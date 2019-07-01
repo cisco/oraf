@@ -31,7 +31,7 @@ private[impl] object AggUpdateUtils {
    *                feature value
    */
   private[impl] def updateParentImpurity(
-      statsAggregator: DTStatsAggregator,
+      statsAggregator: OptimizedDTStatsAggregator,
       indices: Array[Int],
       from: Int,
       to: Int,
@@ -49,7 +49,7 @@ private[impl] object AggUpdateUtils {
    * @param featureSplits Array of splits for the current feature
    */
   private[impl] def updateUnorderedFeature(
-      agg: DTStatsAggregator,
+      agg: OptimizedDTStatsAggregator,
       featureValue: Int,
       label: Double,
       featureIndex: Int,
@@ -72,7 +72,7 @@ private[impl] object AggUpdateUtils {
 
   /** Update aggregator for an (ordered feature, label) pair */
   private[impl] def updateOrderedFeature(
-      agg: DTStatsAggregator,
+      agg: OptimizedDTStatsAggregator,
       featureValue: Int,
       label: Double,
       featureIndexIdx: Int,

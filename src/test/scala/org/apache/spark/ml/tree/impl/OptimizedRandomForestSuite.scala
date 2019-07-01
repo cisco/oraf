@@ -52,7 +52,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
     assert(arr.length === 1000)
     val rdd = sc.parallelize(arr)
     val strategy = new OldStrategy(OldAlgo.Classification, Gini, 3, 2, 100)
-    val metadata = DecisionTreeMetadata.buildMetadata(rdd, strategy)
+    val metadata = OptimizedDecisionTreeMetadata.buildMetadata(rdd, strategy)
     assert(!metadata.isUnordered(featureIndex = 0))
     val splits = OptimizedRandomForest.findSplits(rdd, metadata, seed = 42)
     assert(splits.length === 2)
@@ -66,7 +66,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
     val strategy = new OldStrategy(OldAlgo.Classification, Gini, maxDepth = 2, numClasses = 2,
       maxBins = 100, categoricalFeaturesInfo = Map(0 -> 2, 1 -> 2))
 
-    val metadata = DecisionTreeMetadata.buildMetadata(rdd, strategy)
+    val metadata = OptimizedDecisionTreeMetadata.buildMetadata(rdd, strategy)
     val splits = OptimizedRandomForest.findSplits(rdd, metadata, seed = 42)
     assert(!metadata.isUnordered(featureIndex = 0))
     assert(!metadata.isUnordered(featureIndex = 1))
@@ -83,7 +83,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
     val strategy = new OldStrategy(OldAlgo.Classification, Gini, maxDepth = 2, numClasses = 2,
       maxBins = 100, categoricalFeaturesInfo = Map(0 -> 3, 1 -> 3))
 
-    val metadata = DecisionTreeMetadata.buildMetadata(rdd, strategy)
+    val metadata = OptimizedDecisionTreeMetadata.buildMetadata(rdd, strategy)
     assert(!metadata.isUnordered(featureIndex = 0))
     assert(!metadata.isUnordered(featureIndex = 1))
     val splits = OptimizedRandomForest.findSplits(rdd, metadata, seed = 42)
@@ -95,7 +95,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
   test("find splits for a continuous feature") {
     // find splits for normal case
     {
-      val fakeMetadata = new DecisionTreeMetadata(1, 200000, 0, 0,
+      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 200000, 0, 0,
         Map(), Set(),
         Array(6), Gini, QuantileStrategy.Sort,
         0, 0, 0.0, 0, 0
@@ -111,7 +111,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
 
     // SPARK-16957: Use midpoints for split values.
     {
-      val fakeMetadata = new DecisionTreeMetadata(1, 8, 0, 0,
+      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 8, 0, 0,
         Map(), Set(),
         Array(3), Gini, QuantileStrategy.Sort,
         0, 0, 0.0, 0, 0
@@ -138,7 +138,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
     // find splits should not return identical splits
     // when there are not enough split candidates, reduce the number of splits in metadata
     {
-      val fakeMetadata = new DecisionTreeMetadata(1, 12, 0, 0,
+      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 12, 0, 0,
         Map(), Set(),
         Array(5), Gini, QuantileStrategy.Sort,
         0, 0, 0.0, 0, 0
@@ -153,7 +153,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
 
     // find splits when most samples close to the minimum
     {
-      val fakeMetadata = new DecisionTreeMetadata(1, 18, 0, 0,
+      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 18, 0, 0,
         Map(), Set(),
         Array(3), Gini, QuantileStrategy.Sort,
         0, 0, 0.0, 0, 0
@@ -167,7 +167,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
 
     // find splits when most samples close to the maximum
     {
-      val fakeMetadata = new DecisionTreeMetadata(1, 17, 0, 0,
+      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 17, 0, 0,
         Map(), Set(),
         Array(2), Gini, QuantileStrategy.Sort,
         0, 0, 0.0, 0, 0
@@ -181,7 +181,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
 
     // find splits for constant feature
     {
-      val fakeMetadata = new DecisionTreeMetadata(1, 3, 0, 0,
+      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 3, 0, 0,
         Map(), Set(),
         Array(3), Gini, QuantileStrategy.Sort,
         0, 0, 0.0, 0, 0
@@ -251,7 +251,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
       maxBins = 100,
       categoricalFeaturesInfo = Map(0 -> 3, 1 -> 3))
 
-    val metadata = DecisionTreeMetadata.buildMetadata(rdd, strategy)
+    val metadata = OptimizedDecisionTreeMetadata.buildMetadata(rdd, strategy)
     assert(metadata.isUnordered(featureIndex = 0))
     assert(metadata.isUnordered(featureIndex = 1))
     val splits = OptimizedRandomForest.findSplits(rdd, metadata, seed = 42)
@@ -288,7 +288,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
       maxBins = 100, categoricalFeaturesInfo = Map(0 -> 10, 1 -> 10))
     // 2^(10-1) - 1 > 100, so categorical features will be ordered
 
-    val metadata = DecisionTreeMetadata.buildMetadata(rdd, strategy)
+    val metadata = OptimizedDecisionTreeMetadata.buildMetadata(rdd, strategy)
     assert(!metadata.isUnordered(featureIndex = 0))
     assert(!metadata.isUnordered(featureIndex = 1))
     val splits = OptimizedRandomForest.findSplits(rdd, metadata, seed = 42)
@@ -317,10 +317,10 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
 
     val strategy = new OldStrategy(algo = OldAlgo.Classification, impurity = Gini, maxDepth = 1,
       numClasses = 2, categoricalFeaturesInfo = Map(0 -> 3))
-    val metadata = DecisionTreeMetadata.buildMetadata(input, strategy)
+    val metadata = OptimizedDecisionTreeMetadata.buildMetadata(input, strategy)
     val splits = OptimizedRandomForest.findSplits(input, metadata, seed = 42)
 
-    val treeInput = TreePoint.convertToTreeRDD(input, splits, metadata)
+    val treeInput = OptimizedTreePoint.convertToTreeRDD(input, splits, metadata)
     val baggedInput = BaggedPoint.convertToBaggedRDD(treeInput, 1.0, 1, withReplacement = false)
 
     val topNode = OptimizedLearningNode.emptyNode(nodeIndex = 1)
@@ -362,10 +362,10 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
 
     val strategy = new OldStrategy(algo = OldAlgo.Classification, impurity = Gini, maxDepth = 5,
       numClasses = 2, categoricalFeaturesInfo = Map(0 -> 3))
-    val metadata = DecisionTreeMetadata.buildMetadata(input, strategy)
+    val metadata = OptimizedDecisionTreeMetadata.buildMetadata(input, strategy)
     val splits = OptimizedRandomForest.findSplits(input, metadata, seed = 42)
 
-    val treeInput = TreePoint.convertToTreeRDD(input, splits, metadata)
+    val treeInput = OptimizedTreePoint.convertToTreeRDD(input, splits, metadata)
     val baggedInput = BaggedPoint.convertToBaggedRDD(treeInput, 1.0, 1, withReplacement = false)
 
     val topNode = OptimizedLearningNode.emptyNode(nodeIndex = 1)
@@ -486,7 +486,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
       val seeds = Array(123, 5354, 230, 349867, 23987)
       val maxMemoryUsage: Long = 128 * 1024L * 1024L
       val metadata =
-        DecisionTreeMetadata.buildMetadata(rdd, strategy, numTrees, featureSubsetStrategy)
+        OptimizedDecisionTreeMetadata.buildMetadata(rdd, strategy, numTrees, featureSubsetStrategy)
       seeds.foreach { seed =>
         val failString = s"Failed on test with:" +
           s"numTrees=$numTrees, featureSubsetStrategy=$featureSubsetStrategy," +

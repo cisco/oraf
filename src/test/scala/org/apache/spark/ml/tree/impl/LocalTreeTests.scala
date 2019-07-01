@@ -78,11 +78,11 @@ private[impl] object LocalTreeTests extends Logging {
     require(numFeatures > 0, "Local decision tree training requires > 0 features.")
 
     // Construct metadata, find splits
-    val metadata = DecisionTreeMetadata.buildMetadata(input, strategy)
+    val metadata = OptimizedDecisionTreeMetadata.buildMetadata(input, strategy)
     val splits = RandomForest.findSplits(input, metadata, seed)
 
     // Bin feature values (convert to TreePoint representation).
-    val treeInput = TreePoint.convertToTreeRDD(input, splits, metadata).collect()
+    val treeInput = OptimizedTreePoint.convertToTreeRDD(input, splits, metadata).collect()
     val instanceWeights = Array.fill[Double](treeInput.length)(1.0)
 
     // Create tree root node

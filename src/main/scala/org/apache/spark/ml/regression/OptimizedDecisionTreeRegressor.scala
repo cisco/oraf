@@ -106,7 +106,10 @@ class OptimizedDecisionTreeRegressor @Since("1.4.0") (@Since("1.4.0") override v
 
   /** @group setParam */
   @Since("2.0.0")
-  override def setTimePredictionStrategy(value: TimePredictionStrategy) = timePredictionStrategy = value
+  override def setTimePredictionStrategy(value: TimePredictionStrategy): this.type = {
+    timePredictionStrategy = value
+    this
+  }
 
   /** @group setParam */
   @Since("2.0.0")
@@ -115,11 +118,17 @@ class OptimizedDecisionTreeRegressor @Since("1.4.0") (@Since("1.4.0") override v
 
   /** @group setParam */
   @Since("2.0.0")
-  override def setCustomSplits(value: Option[Array[Array[Double]]]) = customSplits = value
+  override def setCustomSplits(value: Option[Array[Array[Double]]]): this.type = {
+    customSplits = value
+    this
+  }
 
   /** @group setParam */
   @Since("2.0.0")
-  override def setLocalTrainingAlgorithm(value: LocalTrainingAlgorithm) = localTrainingAlgorithm = value
+  override def setLocalTrainingAlgorithm(value: LocalTrainingAlgorithm): this.type = {
+    localTrainingAlgorithm = value
+    this
+  }
 
   override protected def train(dataset: Dataset[_]): OptimizedDecisionTreeRegressionModel = instrumented { instr =>
     instr.logPipelineStage(this)

@@ -25,7 +25,7 @@ import org.apache.spark.mllib.tree.model.{ImpurityStats, InformationGainStats =>
 /**
  * Decision tree node interface.
  */
-sealed abstract class OptimizedNode extends Serializable {
+abstract class OptimizedNode extends Serializable {
 
   // TODO: Add aggregate stats (once available).  This will happen after we move the DecisionTree
   //       code into the new API and deprecate the old API.  SPARK-3727
@@ -36,41 +36,43 @@ sealed abstract class OptimizedNode extends Serializable {
   /** Impurity measure at this node (for training data) */
   def impurity: Double
 
+  def predict(features: Vector): Double
+
   /** Recursive prediction helper method */
-  private[ml] def predictImpl(features: Vector): OptimizedLeafNode
+  def predictImpl(features: Vector): OptimizedLeafNode
 
   /**
    * Get the number of nodes in tree below this node, including leaf nodes.
    * E.g., if this is a leaf, returns 0.  If both children are leaves, returns 2.
    */
-  private[tree] def numDescendants: Int
+  def numDescendants: Int
 
   /**
    * Recursive print function.
    * @param indentFactor  The number of spaces to add to each level of indentation.
    */
-  private[tree] def subtreeToString(indentFactor: Int = 0): String
+  def subtreeToString(indentFactor: Int = 0): String
 
   /**
    * Get depth of tree from this node.
    * E.g.: Depth 0 means this is a leaf node.  Depth 1 means 1 internal and 2 leaf nodes.
    */
-  private[tree] def subtreeDepth: Int
+  def subtreeDepth: Int
 
   /**
    * Create a copy of this node in the old Node format, recursively creating child nodes as needed.
    * @param id  Node ID using old format IDs
    */
-  private[ml] def toOld(id: Int): OldNode
+  def toOld(id: Int): OldNode
 
   /**
    * Trace down the tree, and return the largest feature index used in any split.
    * @return  Max feature index used in a split, or -1 if there are no splits (single leaf node).
    */
-  private[ml] def maxSplitFeatureIndex(): Int
+  def maxSplitFeatureIndex(): Int
 
   /** Returns a deep copy of the subtree rooted at this node. */
-  private[tree] def deepCopy(): OptimizedNode
+  def deepCopy(): OptimizedNode
 }
 
 private[ml] object OptimizedNode {
@@ -103,33 +105,35 @@ private[ml] object OptimizedNode {
  * @param prediction  Prediction this node makes
  * @param impurity  Impurity measure at this node (for training data)
  */
-class OptimizedLeafNode private[ml](
+class OptimizedLeafNode (
     override val prediction: Double,
     override val impurity: Double) extends OptimizedNode {
 
   override def toString: String =
     s"LeafNode(prediction = $prediction, impurity = $impurity)"
 
-  override private[ml] def predictImpl(features: Vector): OptimizedLeafNode = this
+  override def predictImpl(features: Vector): OptimizedLeafNode = this
 
-  override private[tree] def numDescendants: Int = 0
+  override def predict(features: Vector): Double = prediction
 
-  override private[tree] def subtreeToString(indentFactor: Int = 0): String = {
+  override def numDescendants: Int = 0
+
+  override def subtreeToString(indentFactor: Int = 0): String = {
     val prefix: String = " " * indentFactor
     prefix + s"Predict: $prediction\n"
   }
 
-  override private[tree] def subtreeDepth: Int = 0
+  override def subtreeDepth: Int = 0
 
-  override private[ml] def toOld(id: Int): OldNode = {
+  override def toOld(id: Int): OldNode = {
     // TODO: Probability can't be computed without impurityStats
     new OldNode(id, new OldPredict(prediction, prob = 0.0),
       impurity, isLeaf = true, None, None, None, None)
   }
 
-  override private[ml] def maxSplitFeatureIndex(): Int = -1
+  override def maxSplitFeatureIndex(): Int = -1
 
-  override private[tree] def deepCopy(): OptimizedNode = {
+  override def deepCopy(): OptimizedNode = {
     new OptimizedLeafNode(prediction, impurity)
   }
 }
@@ -159,7 +163,11 @@ class OptimizedInternalNode private[ml](
     s"InternalNode(prediction = $prediction, impurity = $impurity, split = $split)"
   }
 
-  override private[ml] def predictImpl(features: Vector): OptimizedLeafNode = {
+  override def predict(features: Vector): Double = {
+    predictImpl(features).predict(features)
+  }
+
+  override def predictImpl(features: Vector): OptimizedLeafNode = {
     if (split.shouldGoLeft(features)) {
       leftChild.predictImpl(features)
     } else {
@@ -167,11 +175,11 @@ class OptimizedInternalNode private[ml](
     }
   }
 
-  override private[tree] def numDescendants: Int = {
+  override def numDescendants: Int = {
     2 + leftChild.numDescendants + rightChild.numDescendants
   }
 
-  override private[tree] def subtreeToString(indentFactor: Int = 0): String = {
+  override def subtreeToString(indentFactor: Int = 0): String = {
     val prefix: String = " " * indentFactor
     prefix + s"If (${OptimizedInternalNode.splitToString(split, left = true)})\n" +
       leftChild.subtreeToString(indentFactor + 1) +
@@ -179,11 +187,11 @@ class OptimizedInternalNode private[ml](
       rightChild.subtreeToString(indentFactor + 1)
   }
 
-  override private[tree] def subtreeDepth: Int = {
+  override def subtreeDepth: Int = {
     1 + math.max(leftChild.subtreeDepth, rightChild.subtreeDepth)
   }
 
-  override private[ml] def toOld(id: Int): OldNode = {
+  override def toOld(id: Int): OldNode = {
     assert(id.toLong * 2 < Int.MaxValue, "Decision Tree could not be converted from new to old API"
       + " since the old API does not support deep trees.")
     new OldNode(id, new OldPredict(prediction, prob = 0.0), impurity,
@@ -194,12 +202,12 @@ class OptimizedInternalNode private[ml](
         new OldPredict(rightChild.prediction, prob = 0.0))))
   }
 
-  override private[ml] def maxSplitFeatureIndex(): Int = {
+  override def maxSplitFeatureIndex(): Int = {
     math.max(split.featureIndex,
       math.max(leftChild.maxSplitFeatureIndex(), rightChild.maxSplitFeatureIndex()))
   }
 
-  override private[tree] def deepCopy(): OptimizedNode = {
+  override def deepCopy(): OptimizedNode = {
     new OptimizedInternalNode(prediction, impurity, gain, leftChild.deepCopy(),
       rightChild.deepCopy(), split)
   }
@@ -250,7 +258,7 @@ private object OptimizedInternalNode {
  *                so that we do not need to consider splitting it further.
  * @param stats  Impurity statistics for this node.
  */
-private[tree] class OptimizedLearningNode(
+class OptimizedLearningNode(
                                            var id: Int,
                                            var leftChild: Option[OptimizedLearningNode],
                                            var rightChild: Option[OptimizedLearningNode],
@@ -350,7 +358,7 @@ private[tree] class OptimizedLearningNode(
 
 }
 
-private[tree] object OptimizedLearningNode {
+object OptimizedLearningNode {
 
   /** Create a node with some of its fields set. */
   def apply(

@@ -52,7 +52,10 @@ private[ml] trait OptimizedDecisionTreeParams extends DecisionTreeParams {
   final def getMaxMemoryMultiplier: Double = $(maxMemoryMultiplier)
 
   @deprecated("This method is deprecated and will be removed in 3.0.0.", "2.1.0")
-  def setTimePredictionStrategy(value: TimePredictionStrategy) = timePredictionStrategy = value
+  def setTimePredictionStrategy(value: TimePredictionStrategy): this.type = {
+    timePredictionStrategy = value
+    this
+  }
 
   final def getTimePredictionStrategy: TimePredictionStrategy = timePredictionStrategy
 
@@ -63,13 +66,19 @@ private[ml] trait OptimizedDecisionTreeParams extends DecisionTreeParams {
   final def getMaxTasksPerBin: Int = $(maxTasksPerBin)
 
   @deprecated("This method is deprecated and will be removed in 3.0.0.", "2.1.0")
-  def setCustomSplits(value: Option[Array[Array[Double]]]) = customSplits = value
+  def setCustomSplits(value: Option[Array[Array[Double]]]): this.type = {
+    customSplits = value
+    this
+  }
 
   /** @group expertGetParam */
   final def getCustomSplits: Option[Array[Array[Double]]] = customSplits
 
   @deprecated("This method is deprecated and will be removed in 3.0.0.", "2.1.0")
-  def setLocalTrainingAlgorithm(value: LocalTrainingAlgorithm) = this.localTrainingAlgorithm = value
+  def setLocalTrainingAlgorithm(value: LocalTrainingAlgorithm): this.type = {
+    this.localTrainingAlgorithm = value
+    this
+  }
 
   /** @group expertGetParam */
   final def getLocalTrainingAlgorithm: LocalTrainingAlgorithm = localTrainingAlgorithm

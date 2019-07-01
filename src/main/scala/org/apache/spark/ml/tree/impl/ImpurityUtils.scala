@@ -29,7 +29,7 @@ private[impl] object ImpurityUtils {
    * @param indices indices(i) = row index corresponding to ith feature value
    */
   private[impl] def getParentImpurityCalculator(
-      metadata: DecisionTreeMetadata,
+      metadata: OptimizedDecisionTreeMetadata,
       indices: Array[Int],
       from: Int,
       to: Int,
@@ -38,7 +38,7 @@ private[impl] object ImpurityUtils {
     // Compute sufficient stats (e.g. label counts) for all data at the current node,
     // store result in currNodeStatsAgg.parentStats so that we can share it across
     // all features for the current node
-    val currNodeStatsAgg = new DTStatsAggregator(metadata, featureSubset = None)
+    val currNodeStatsAgg = new OptimizedDTStatsAggregator(metadata, featureSubset = None)
     AggUpdateUtils.updateParentImpurity(currNodeStatsAgg, indices, from, to,
       instanceWeights, labels)
     currNodeStatsAgg.getParentImpurityCalculator()
@@ -59,7 +59,7 @@ private[impl] object ImpurityUtils {
       parentImpurityCalculator: ImpurityCalculator,
       leftImpurityCalculator: ImpurityCalculator,
       rightImpurityCalculator: ImpurityCalculator,
-      metadata: DecisionTreeMetadata): ImpurityStats = {
+      metadata: OptimizedDecisionTreeMetadata): ImpurityStats = {
 
     val impurity: Double = parentImpurityCalculator.calculate()
 
@@ -99,7 +99,7 @@ private[impl] object ImpurityUtils {
    * @param metadata learning and dataset metadata for DecisionTree
    */
   private[impl] def getCentroid(
-      metadata: DecisionTreeMetadata,
+      metadata: OptimizedDecisionTreeMetadata,
       binStats: ImpurityCalculator): Double = {
 
     if (binStats.count != 0) {
