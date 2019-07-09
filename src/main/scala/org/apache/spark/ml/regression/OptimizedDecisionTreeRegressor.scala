@@ -271,7 +271,7 @@ class OptimizedDecisionTreeRegressionModel private[ml] (
 
   @Since("2.0.0")
   override def write: MLWriter =
-    new OptimizedDecisionTreeRegressionModel.DecisionTreeRegressionModelWriter(this)
+    new OptimizedDecisionTreeRegressionModel.DecisionTreeRegressionModelSerializer(this)
 }
 
 @Since("2.0.0")
@@ -279,7 +279,7 @@ object OptimizedDecisionTreeRegressionModel extends MLReadable[OptimizedDecision
 
   @Since("2.0.0")
   override def read: MLReader[OptimizedDecisionTreeRegressionModel] =
-    new DecisionTreeRegressionModelReader
+    new DecisionTreeRegressionModelDeserializer
 
   @Since("2.0.0")
   override def load(path: String): OptimizedDecisionTreeRegressionModel = super.load(path)
@@ -295,6 +295,15 @@ object OptimizedDecisionTreeRegressionModel extends MLReadable[OptimizedDecision
       val (nodeData, _) = NodeData.build(instance.rootNode, 0)
       val dataPath = new Path(path, "data").toString
       sparkSession.createDataFrame(nodeData).write.parquet(dataPath)
+    }
+  }
+
+  private[OptimizedDecisionTreeRegressionModel]
+  class DecisionTreeRegressionModelSerializer(instance: OptimizedDecisionTreeRegressionModel)
+    extends MLWriter {
+
+    override protected def saveImpl(path: String): Unit = {
+      OptimizedEnsembleModelSerialization.saveImpl[OptimizedDecisionTreeRegressionModel](instance, path, sparkSession)
     }
   }
 
@@ -315,6 +324,14 @@ object OptimizedDecisionTreeRegressionModel extends MLReadable[OptimizedDecision
     }
   }
 
+  private class DecisionTreeRegressionModelDeserializer
+    extends MLReader[OptimizedDecisionTreeRegressionModel] {
+
+    override def load(path: String): OptimizedDecisionTreeRegressionModel = {
+      OptimizedEnsembleModelSerialization.loadImpl(path, sparkSession)
+    }
+  }
+
   /** Convert a model from the old API */
   private[ml] def fromOld(
                            oldModel: OldDecisionTreeModel,
@@ -328,5 +345,6 @@ object OptimizedDecisionTreeRegressionModel extends MLReadable[OptimizedDecision
     val uid = if (parent != null) parent.uid else Identifiable.randomUID("dtr")
     new OptimizedDecisionTreeRegressionModel(uid, rootNode, numFeatures)
   }
+
 }
 

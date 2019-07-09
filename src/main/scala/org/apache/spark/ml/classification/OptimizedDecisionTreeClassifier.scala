@@ -29,9 +29,9 @@ import org.apache.spark.ml.tree._
 import org.apache.spark.ml.tree.impl.OptimizedRandomForest
 import org.apache.spark.ml.util.Instrumentation.instrumented
 import org.apache.spark.ml.util._
+import org.apache.spark.mllib.linalg.{Vector => OldVector}
 import org.apache.spark.mllib.tree.configuration.{TimePredictionStrategy, Algo => OldAlgo, OptimizedForestStrategy => OldStrategy}
 import org.apache.spark.mllib.tree.model.{DecisionTreeModel => OldDecisionTreeModel}
-import org.apache.spark.mllib.linalg.{Vector => OldVector}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Dataset
 import org.json4s.JsonDSL._
@@ -287,7 +287,7 @@ class OptimizedDecisionTreeClassificationModel private[ml] (
 
   @Since("2.0.0")
   override def write: MLWriter =
-    new OptimizedDecisionTreeClassificationModel.DecisionTreeClassificationModelWriter(this)
+    new OptimizedDecisionTreeClassificationModel.DecisionTreeClassificationModelSerializer(this)
 }
 
 @Since("2.0.0")
@@ -295,7 +295,7 @@ object OptimizedDecisionTreeClassificationModel extends MLReadable[OptimizedDeci
 
   @Since("2.0.0")
   override def read: MLReader[OptimizedDecisionTreeClassificationModel] =
-    new DecisionTreeClassificationModelReader
+    new DecisionTreeClassificationModelDeserializer
 
   @Since("2.0.0")
   override def load(path: String): OptimizedDecisionTreeClassificationModel = super.load(path)
@@ -315,6 +315,15 @@ object OptimizedDecisionTreeClassificationModel extends MLReadable[OptimizedDeci
     }
   }
 
+  private[OptimizedDecisionTreeClassificationModel]
+  class DecisionTreeClassificationModelSerializer(instance: OptimizedDecisionTreeClassificationModel)
+    extends MLWriter {
+
+    override protected def saveImpl(path: String): Unit = {
+      OptimizedEnsembleModelSerialization.saveImpl[OptimizedDecisionTreeClassificationModel](instance, path, sparkSession)
+    }
+  }
+
   private class DecisionTreeClassificationModelReader
     extends MLReader[OptimizedDecisionTreeClassificationModel] {
 
@@ -330,6 +339,17 @@ object OptimizedDecisionTreeClassificationModel extends MLReadable[OptimizedDeci
       val model = new OptimizedDecisionTreeClassificationModel(metadata.uid, root, numFeatures, numClasses)
       metadata.getAndSetParams(model)
       model
+    }
+  }
+
+  private class DecisionTreeClassificationModelDeserializer
+    extends MLReader[OptimizedDecisionTreeClassificationModel] {
+
+    /** Checked against metadata when loading model */
+    private val className = classOf[OptimizedDecisionTreeClassificationModel].getName
+
+    override def load(path: String): OptimizedDecisionTreeClassificationModel = {
+      OptimizedEnsembleModelSerialization.loadImpl[OptimizedDecisionTreeClassificationModel](path, sparkSession)
     }
   }
 

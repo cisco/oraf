@@ -19,7 +19,11 @@
 
 package org.apache.spark.ml.tree
 
-import org.apache.hadoop.fs.Path
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
+
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.hadoop.io.IOUtils
 import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.ml.param.{Param, Params}
 import org.apache.spark.ml.util.DefaultParamsReader.Metadata
@@ -247,6 +251,60 @@ private[ml] object OptimizedDecisionTreeModelReadWrite {
     }
     // Return the root node
     finalNodes.head
+  }
+}
+
+private[ml] object OptimizedEnsembleModelSerialization {
+
+  /**
+    * Helper method for saving a tree ensemble to disk.
+    *
+    * @param instance Tree ensemble model
+    * @param path     Path to which to save the ensemble model.
+    */
+  def saveImpl[M](
+                   instance: M,
+                   path: String,
+                   sql: SparkSession): Unit = {
+    val conf: Configuration = sql.sparkContext.hadoopConfiguration
+
+    val baos = new ByteArrayOutputStream
+    val oos = new ObjectOutputStream(baos)
+
+    oos.writeObject(instance)
+    oos.flush()
+    oos.close()
+
+    val is = new ByteArrayInputStream(baos.toByteArray)
+
+    val fs = FileSystem.get(conf)
+    val dataPath = new Path(path, "data")
+    val os = fs.create(dataPath)
+
+    IOUtils.copyBytes(is, os, conf)
+  }
+
+  /**
+    * Helper method for loading a tree ensemble from disk.
+    * This reconstructs all trees, returning the decision tree / forest model.
+    *
+    * @param path Path given to `saveImpl`
+    * @see `saveImpl` for how the model was saved
+    */
+  def loadImpl[M](
+                   path: String,
+                   sql: SparkSession): M = {
+    val conf: Configuration = sql.sparkContext.hadoopConfiguration
+    val dataPath = new Path(path, "data")
+
+    val fs = FileSystem.get(conf)
+    val is = fs.open(dataPath)
+
+    val ois = new ObjectInputStream(is)
+    val model = ois.readObject.asInstanceOf[M]
+    ois.close()
+
+    model
   }
 }
 

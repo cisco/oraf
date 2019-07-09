@@ -23,6 +23,7 @@ import org.apache.spark.annotation.Since
 import org.apache.spark.ml.feature.LabeledPoint
 import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector, Vectors}
 import org.apache.spark.ml.param.ParamMap
+import org.apache.spark.ml.tree.OptimizedEnsembleModelSerialization
 import org.apache.spark.ml.tree._
 import org.apache.spark.ml.tree.impl.OptimizedRandomForest
 import org.apache.spark.ml.util.DefaultParamsReader.Metadata
@@ -298,7 +299,7 @@ class OptimizedRandomForestClassificationModel private[spark] (
 
   @Since("2.0.0")
   override def write: MLWriter =
-    new OptimizedRandomForestClassificationModelWriter(this)
+    new OptimizedRandomForestClassificationModelSerializer(this)
 }
 
 private
@@ -315,12 +316,21 @@ class OptimizedRandomForestClassificationModelWriter(instance: OptimizedRandomFo
   }
 }
 
+private
+class OptimizedRandomForestClassificationModelSerializer(instance: OptimizedRandomForestClassificationModel)
+  extends MLWriter {
+
+  override protected def saveImpl(path: String): Unit = {
+    OptimizedEnsembleModelSerialization.saveImpl[OptimizedRandomForestClassificationModel](instance, path, sparkSession)
+  }
+}
+
 @Since("2.0.0")
 object OptimizedRandomForestClassificationModel extends MLReadable[OptimizedRandomForestClassificationModel] {
 
   @Since("2.0.0")
   override def read: MLReader[OptimizedRandomForestClassificationModel] =
-    new RandomForestClassificationModelReader
+    new RandomForestClassificationModelDeserializer
 
   @Since("2.0.0")
   override def load(path: String): OptimizedRandomForestClassificationModel = super.load(path)
@@ -354,6 +364,14 @@ object OptimizedRandomForestClassificationModel extends MLReadable[OptimizedRand
       val model = new OptimizedRandomForestClassificationModel(metadata.uid, trees, numFeatures, numClasses)
       metadata.getAndSetParams(model)
       model
+    }
+  }
+
+  private class RandomForestClassificationModelDeserializer
+    extends MLReader[OptimizedRandomForestClassificationModel] {
+
+    override def load(path: String): OptimizedRandomForestClassificationModel = {
+      OptimizedEnsembleModelSerialization.loadImpl[OptimizedRandomForestClassificationModel](path, sparkSession)
     }
   }
 

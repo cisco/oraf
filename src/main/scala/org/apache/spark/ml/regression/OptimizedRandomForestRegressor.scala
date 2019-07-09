@@ -264,7 +264,7 @@ class OptimizedRandomForestRegressionModel private[spark] (
 
   @Since("2.0.0")
   override def write: MLWriter =
-    new OptimizedRandomForestRegressionModelWriter(this)
+    new OptimizedRandomForestRegressionModelSerializer(this)
 }
 
 private
@@ -279,11 +279,20 @@ class OptimizedRandomForestRegressionModelWriter(instance: OptimizedRandomForest
   }
 }
 
+private
+class OptimizedRandomForestRegressionModelSerializer(instance: OptimizedRandomForestRegressionModel)
+  extends MLWriter {
+
+  override protected def saveImpl(path: String): Unit = {
+    OptimizedEnsembleModelSerialization.saveImpl[OptimizedRandomForestRegressionModel](instance, path, sparkSession)
+  }
+}
+
 @Since("2.0.0")
 object OptimizedRandomForestRegressionModel extends MLReadable[OptimizedRandomForestRegressionModel] {
 
   @Since("2.0.0")
-  override def read: MLReader[OptimizedRandomForestRegressionModel] = new RandomForestRegressionModelReader
+  override def read: MLReader[OptimizedRandomForestRegressionModel] = new RandomForestRegressionModelDeserializer
 
   @Since("2.0.0")
   override def load(path: String): OptimizedRandomForestRegressionModel = super.load(path)
@@ -314,6 +323,13 @@ object OptimizedRandomForestRegressionModel extends MLReadable[OptimizedRandomFo
       val model = new OptimizedRandomForestRegressionModel(metadata.uid, trees, numFeatures)
       metadata.getAndSetParams(model)
       model
+    }
+  }
+
+  private class RandomForestRegressionModelDeserializer extends MLReader[OptimizedRandomForestRegressionModel] {
+
+    override def load(path: String): OptimizedRandomForestRegressionModel = {
+      OptimizedEnsembleModelSerialization.loadImpl[OptimizedRandomForestRegressionModel](path, sparkSession)
     }
   }
 
