@@ -186,10 +186,10 @@ object OptimizedDecisionTreeRegressor
   * @param rootNode  Root of the decision tree
   */
 @Since("1.4.0")
-class OptimizedDecisionTreeRegressionModel private[ml] (
-                                                override val uid: String,
-                                                override val rootNode: OptimizedNode,
-                                                override val numFeatures: Int)
+class OptimizedDecisionTreeRegressionModel(
+                                           override val uid: String,
+                                           override val rootNode: OptimizedNode,
+                                           override val numFeatures: Int)
   extends PredictionModel[Vector, OptimizedDecisionTreeRegressionModel]
     with OptimizedDecisionTreeModel with OptimizedDecisionTreeRegressorParams with MLWritable with Serializable {
 
@@ -200,7 +200,7 @@ class OptimizedDecisionTreeRegressionModel private[ml] (
     * Construct a decision tree regression model.
     * @param rootNode  Root node of tree, with other nodes attached.
     */
-  private[ml] def this(rootNode: OptimizedNode, numFeatures: Int) =
+  def this(rootNode: OptimizedNode, numFeatures: Int) =
     this(Identifiable.randomUID("dtr"), rootNode, numFeatures)
 
   override def predict(features: Vector): Double = {

@@ -197,10 +197,10 @@ object OptimizedRandomForestRegressor extends DefaultParamsReadable[OptimizedRan
   * @param numFeatures  Number of features used by this model
   */
 @Since("1.4.0")
-class OptimizedRandomForestRegressionModel private[spark] (
-                                                override val uid: String,
-                                                private val _trees: Array[OptimizedDecisionTreeRegressionModel],
-                                                override val numFeatures: Int)
+class OptimizedRandomForestRegressionModel(
+                                           override val uid: String,
+                                           private val _trees: Array[OptimizedDecisionTreeRegressionModel],
+                                           override val numFeatures: Int)
   extends PredictionModel[Vector, OptimizedRandomForestRegressionModel]
     with OptimizedRandomForestRegressorParams with OptimizedTreeEnsembleModel[OptimizedDecisionTreeRegressionModel]
     with MLWritable with Serializable {

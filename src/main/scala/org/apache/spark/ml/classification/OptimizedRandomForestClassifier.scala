@@ -210,11 +210,11 @@ object OptimizedRandomForestClassifier
   *                Warning: These have null parents.
   */
 @Since("1.4.0")
-class OptimizedRandomForestClassificationModel private[spark] (
-                                                    @Since("1.5.0") override val uid: String,
-                                                    private val _trees: Array[OptimizedDecisionTreeClassificationModel],
-                                                    @Since("1.6.0") override val numFeatures: Int,
-                                                    @Since("1.5.0") override val numClasses: Int)
+class OptimizedRandomForestClassificationModel(
+                                               @Since("1.5.0") override val uid: String,
+                                               private val _trees: Array[OptimizedDecisionTreeClassificationModel],
+                                               @Since("1.6.0") override val numFeatures: Int,
+                                               @Since("1.5.0") override val numClasses: Int)
   extends ProbabilisticClassificationModel[Vector, OptimizedRandomForestClassificationModel]
     with OptimizedRandomForestClassifierParams with OptimizedTreeEnsembleModel[OptimizedDecisionTreeClassificationModel]
     with MLWritable with Serializable {
@@ -226,7 +226,7 @@ class OptimizedRandomForestClassificationModel private[spark] (
     *
     * @param trees  Component trees
     */
-  private[spark] def this(
+  def this(
                         trees: Array[OptimizedDecisionTreeClassificationModel],
                         numFeatures: Int,
                         numClasses: Int) =

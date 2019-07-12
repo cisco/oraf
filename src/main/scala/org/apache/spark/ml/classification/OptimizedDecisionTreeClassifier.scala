@@ -196,11 +196,11 @@ object OptimizedDecisionTreeClassifier
   * features.
   */
 @Since("1.4.0")
-class OptimizedDecisionTreeClassificationModel private[ml] (
-                                                    @Since("1.4.0")override val uid: String,
-                                                    @Since("1.4.0")override val rootNode: OptimizedNode,
-                                                    @Since("1.6.0")override val numFeatures: Int,
-                                                    @Since("1.5.0")override val numClasses: Int)
+class OptimizedDecisionTreeClassificationModel(
+                                               @Since("1.4.0")override val uid: String,
+                                               @Since("1.4.0")override val rootNode: OptimizedNode,
+                                               @Since("1.6.0")override val numFeatures: Int,
+                                               @Since("1.5.0")override val numClasses: Int)
   extends ProbabilisticClassificationModel[Vector, OptimizedDecisionTreeClassificationModel]
     with OptimizedDecisionTreeModel with OptimizedDecisionTreeClassifierParams with MLWritable with Serializable {
 
@@ -211,7 +211,7 @@ class OptimizedDecisionTreeClassificationModel private[ml] (
     * Construct a decision tree classification model.
     * @param rootNode  Root node of tree, with other nodes attached.
     */
-  private[ml] def this(rootNode: OptimizedNode, numFeatures: Int, numClasses: Int) =
+  def this(rootNode: OptimizedNode, numFeatures: Int, numClasses: Int) =
     this(Identifiable.randomUID("dtc"), rootNode, numFeatures, numClasses)
 
   override def predict(features: Vector): Double = {
