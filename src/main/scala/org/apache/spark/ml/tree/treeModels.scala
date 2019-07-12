@@ -19,11 +19,11 @@
 
 package org.apache.spark.ml.tree
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
+import java.io.{ObjectInputStream, ObjectOutputStream}
+import java.net.URI
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.hadoop.io.IOUtils
 import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.ml.param.{Param, Params}
 import org.apache.spark.ml.util.DefaultParamsReader.Metadata
@@ -268,20 +268,11 @@ private[ml] object OptimizedEnsembleModelSerialization {
                    sql: SparkSession): Unit = {
     val conf: Configuration = sql.sparkContext.hadoopConfiguration
 
-    val baos = new ByteArrayOutputStream
-    val oos = new ObjectOutputStream(baos)
+    val outputStream = FileSystem.get(URI.create(path), conf).create(new Path(path))
+    val oos = new ObjectOutputStream(outputStream)
 
     oos.writeObject(instance)
-    oos.flush()
     oos.close()
-
-    val is = new ByteArrayInputStream(baos.toByteArray)
-
-    val fs = FileSystem.get(conf)
-    val dataPath = new Path(path, "data")
-    val os = fs.create(dataPath)
-
-    IOUtils.copyBytes(is, os, conf)
   }
 
   /**
@@ -295,12 +286,10 @@ private[ml] object OptimizedEnsembleModelSerialization {
                    path: String,
                    sql: SparkSession): M = {
     val conf: Configuration = sql.sparkContext.hadoopConfiguration
-    val dataPath = new Path(path, "data")
 
-    val fs = FileSystem.get(conf)
-    val is = fs.open(dataPath)
+    val inputStream = FileSystem.get(URI.create(path), conf).open(new Path(path))
+    val ois = new ObjectInputStream(inputStream)
 
-    val ois = new ObjectInputStream(is)
     val model = ois.readObject.asInstanceOf[M]
     ois.close()
 
