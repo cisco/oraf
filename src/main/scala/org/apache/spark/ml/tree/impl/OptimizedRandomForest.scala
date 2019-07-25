@@ -27,6 +27,7 @@ import org.apache.spark.ml.classification.OptimizedDecisionTreeClassificationMod
 import org.apache.spark.ml.feature.LabeledPoint
 import org.apache.spark.ml.regression.OptimizedDecisionTreeRegressionModel
 import org.apache.spark.ml.tree._
+import org.apache.spark.ml.feature.Instance
 import org.apache.spark.ml.util.Instrumentation
 import org.apache.spark.mllib.tree.configuration.{Algo => OldAlgo, OptimizedForestStrategy => OldStrategy}
 import org.apache.spark.mllib.tree.impurity.ImpurityCalculator
@@ -82,6 +83,21 @@ import scala.util.{Random, Try}
  */
 private[spark] object OptimizedRandomForest extends Logging {
 
+  def runWithLabeledPoints(
+       oldInput: RDD[LabeledPoint],
+       strategy: OldStrategy,
+       numTrees: Int,
+       featureSubsetStrategy: String,
+       seed: Long,
+       instr: Option[Instrumentation],
+       prune: Boolean = true,
+       parentUID: Option[String] = None,
+       computeStatistics: Boolean = false)
+  : (Array[OptimizedDecisionTreeModel], Option[TrainingStatistics]) = {
+    val input = oldInput.map(labeledPoint => Instance(labeledPoint.label, 1.0, labeledPoint.features))
+    run(input, strategy, numTrees, featureSubsetStrategy, seed, instr, prune, parentUID, computeStatistics)
+  }
+
   /**
    * Train a random forest.
    *
@@ -89,7 +105,7 @@ private[spark] object OptimizedRandomForest extends Logging {
    * @return an unweighted set of trees
    */
   def run(
-      input: RDD[LabeledPoint],
+      input: RDD[Instance],
       strategy: OldStrategy,
       numTrees: Int,
       featureSubsetStrategy: String,
@@ -106,7 +122,7 @@ private[spark] object OptimizedRandomForest extends Logging {
 
     timer.start("init")
 
-    val retaggedInput = input.retag(classOf[LabeledPoint])
+    val retaggedInput = input.retag(classOf[Instance])
     val metadata =
       OptimizedDecisionTreeMetadata.buildMetadata(retaggedInput, strategy, numTrees, featureSubsetStrategy)
     instr match {
@@ -982,7 +998,7 @@ private[spark] object OptimizedRandomForest extends Logging {
    *          of size (numFeatures, numSplits)
    */
   protected[tree] def findSplits(
-      input: RDD[LabeledPoint],
+      input: RDD[Instance],
       metadata: OptimizedDecisionTreeMetadata,
       seed: Long): Array[Array[Split]] = {
 
@@ -1003,14 +1019,14 @@ private[spark] object OptimizedRandomForest extends Logging {
       logDebug("fraction of data used for calculating quantiles = " + fraction)
       input.sample(withReplacement = false, fraction, new XORShiftRandom(seed).nextInt())
     } else {
-      input.sparkContext.emptyRDD[LabeledPoint]
+      input.sparkContext.emptyRDD[Instance]
     }
 
     findSplitsBySorting(sampledInput, metadata, continuousFeatures)
   }
 
   private def findSplitsBySorting(
-      input: RDD[LabeledPoint],
+      input: RDD[Instance],
       metadata: OptimizedDecisionTreeMetadata,
       continuousFeatures: IndexedSeq[Int]): Array[Array[Split]] = {
 

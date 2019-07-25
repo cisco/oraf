@@ -95,7 +95,7 @@ private class OptimizedRandomForest (
     * @return RandomForestModel that can be used for prediction.
     */
   def run(input: RDD[LabeledPoint]): (Array[NewDTModel], Option[TrainingStatistics]) = {
-    NewRandomForest.run(input.map(_.asML), strategy, numTrees,
+    NewRandomForest.runWithLabeledPoints(input.map(_.asML), strategy, numTrees,
       featureSubsetStrategy, seed.toLong, None, prune = true, None, computeStatistics = true)
   }
 }

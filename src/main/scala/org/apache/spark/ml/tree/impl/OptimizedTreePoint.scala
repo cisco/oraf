@@ -19,7 +19,7 @@
 
 package org.apache.spark.ml.tree.impl
 
-import org.apache.spark.ml.feature.LabeledPoint
+import org.apache.spark.ml.feature.Instance
 import org.apache.spark.ml.tree.{ContinuousSplit, Split}
 import org.apache.spark.rdd.RDD
 
@@ -39,7 +39,7 @@ import org.apache.spark.rdd.RDD
  * @param binnedFeatures  Binned feature values.
  *                        Same length as LabeledPoint.features, but values are bin indices.
  */
-class OptimizedTreePoint(label: Double, binnedFeatures: Array[Int])
+class OptimizedTreePoint(label: Double, binnedFeatures: Array[Int], sampleWeight: Double)
   extends TreePoint(label, binnedFeatures) with Serializable {
 }
 
@@ -54,7 +54,7 @@ object OptimizedTreePoint {
    * @return  TreePoint dataset representation
    */
   def convertToTreeRDD(
-      input: RDD[LabeledPoint],
+      input: RDD[Instance],
       splits: Array[Array[Split]],
       metadata: OptimizedDecisionTreeMetadata): RDD[OptimizedTreePoint] = {
     // Construct arrays for featureArity for efficiency in the inner loop.
@@ -72,32 +72,31 @@ object OptimizedTreePoint {
       }
     }
     input.map { x =>
-      OptimizedTreePoint.labeledPointToTreePoint(x, thresholds, featureArity)
+      OptimizedTreePoint.instanceToTreePoint(x, thresholds, featureArity)
     }
   }
 
   /**
-   * Convert one LabeledPoint into its TreePoint representation.
-   * @param thresholds  For each feature, split thresholds for continuous features,
-   *                    empty for categorical features.
-   * @param featureArity  Array indexed by feature, with value 0 for continuous and numCategories
-   *                      for categorical features.
-   */
-  private def labeledPointToTreePoint(
-      labeledPoint: LabeledPoint,
-      thresholds: Array[Array[Double]],
-      featureArity: Array[Int]): OptimizedTreePoint = {
-    val numFeatures = labeledPoint.features.size
+    * Convert one Instance into its TreePoint representation.
+    * @param thresholds  For each feature, split thresholds for continuous features,
+    *                    empty for categorical features.
+    * @param featureArity  Array indexed by feature, with value 0 for continuous and numCategories
+    *                      for categorical features.
+    */
+  private def instanceToTreePoint(
+                                   instance: Instance,
+                                   thresholds: Array[Array[Double]],
+                                   featureArity: Array[Int]): OptimizedTreePoint = {
+    val numFeatures = instance.features.size
     val arr = new Array[Int](numFeatures)
     var featureIndex = 0
     while (featureIndex < numFeatures) {
       arr(featureIndex) =
-        findBin(featureIndex, labeledPoint, featureArity(featureIndex), thresholds(featureIndex))
+        findBin(featureIndex, instance, featureArity(featureIndex), thresholds(featureIndex))
       featureIndex += 1
     }
-    new OptimizedTreePoint(labeledPoint.label, arr)
+    new OptimizedTreePoint(instance.label, arr, 1.0)
   }
-
   /**
    * Find discretized value for one (labeledPoint, feature).
    *
@@ -108,10 +107,10 @@ object OptimizedTreePoint {
    */
   private def findBin(
       featureIndex: Int,
-      labeledPoint: LabeledPoint,
+      instance: Instance,
       featureArity: Int,
       thresholds: Array[Double]): Int = {
-    val featureValue = labeledPoint.features(featureIndex)
+    val featureValue = instance.features(featureIndex)
 
     if (featureArity == 0) {
       val idx = java.util.Arrays.binarySearch(thresholds, featureValue)
@@ -127,7 +126,7 @@ object OptimizedTreePoint {
           s"DecisionTree given invalid data:" +
             s" Feature $featureIndex is categorical with values in {0,...,${featureArity - 1}," +
             s" but a data point gives it value $featureValue.\n" +
-            "  Bad data point: " + labeledPoint.toString)
+            "  Bad data point: " + instance.toString)
       }
       featureValue.toInt
     }

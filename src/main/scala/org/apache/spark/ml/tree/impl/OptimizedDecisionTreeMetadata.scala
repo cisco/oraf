@@ -19,17 +19,17 @@
 
 package org.apache.spark.ml.tree.impl
 
-import scala.collection.mutable
-import scala.util.Try
-
 import org.apache.spark.internal.Logging
-import org.apache.spark.ml.feature.LabeledPoint
+import org.apache.spark.ml.feature.Instance
 import org.apache.spark.ml.tree.TreeEnsembleParams
 import org.apache.spark.mllib.tree.configuration.Algo._
 import org.apache.spark.mllib.tree.configuration.QuantileStrategy._
 import org.apache.spark.mllib.tree.configuration.Strategy
 import org.apache.spark.mllib.tree.impurity.Impurity
 import org.apache.spark.rdd.RDD
+
+import scala.collection.mutable
+import scala.util.Try
 
 /**
   * Learning and dataset metadata for DecisionTree.
@@ -67,7 +67,7 @@ object OptimizedDecisionTreeMetadata extends Logging {
     * as well as the number of splits and bins for each feature.
     */
   def buildMetadata(
-                     input: RDD[LabeledPoint],
+                     input: RDD[Instance],
                      strategy: Strategy,
                      numTrees: Int,
                      featureSubsetStrategy: String): OptimizedDecisionTreeMetadata = {
@@ -179,7 +179,7 @@ object OptimizedDecisionTreeMetadata extends Logging {
     * Version of [[DecisionTreeMetadata#buildMetadata]] for DecisionTree.
     */
   def buildMetadata(
-                     input: RDD[LabeledPoint],
+                     input: RDD[Instance],
                      strategy: Strategy): OptimizedDecisionTreeMetadata = {
     buildMetadata(input, strategy, numTrees = 1, featureSubsetStrategy = "all")
   }

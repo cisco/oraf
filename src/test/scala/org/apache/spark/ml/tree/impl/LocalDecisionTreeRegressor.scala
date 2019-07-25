@@ -20,15 +20,16 @@
 package org.apache.spark.ml.tree.impl
 
 import org.apache.spark.ml.Predictor
-import org.apache.spark.ml.feature.LabeledPoint
+import org.apache.spark.ml.feature.Instance
 import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.param.ParamMap
-import org.apache.spark.ml.regression.{DecisionTreeRegressionModel, OptimizedDecisionTreeRegressionModel}
-import org.apache.spark.ml.tree.{DecisionTreeParams, OptimizedDecisionTreeParams, TreeRegressorParams}
+import org.apache.spark.ml.regression.OptimizedDecisionTreeRegressionModel
+import org.apache.spark.ml.tree.{OptimizedDecisionTreeParams, TreeRegressorParams}
 import org.apache.spark.ml.util.{Identifiable, MetadataUtils}
 import org.apache.spark.mllib.tree.configuration.{Algo => OldAlgo, Strategy => OldStrategy}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.{Dataset, Row}
+import org.apache.spark.sql.functions._
 
 /**
  * Test-only class for fitting a decision tree regressor on a dataset small enough to fit on a
@@ -61,7 +62,11 @@ private[impl] final class LocalDecisionTreeRegressor(override val uid: String)
   override protected def train(dataset: Dataset[_]): OptimizedDecisionTreeRegressionModel = {
     val categoricalFeatures: Map[Int, Int] =
       MetadataUtils.getCategoricalFeatures(dataset.schema($(featuresCol)))
-    val oldDataset: RDD[LabeledPoint] = extractLabeledPoints(dataset)
+//    val oldDataset: RDD[Instance] = extractLabeledPoints(dataset)
+    val oldDataset: RDD[Instance] = dataset.select(col($(labelCol)), col($(featuresCol))).rdd.map {
+      case Row(label: Double, features: Vector) => Instance(label, 1.0, features)
+    }
+
     val strategy = getOldStrategy(categoricalFeatures)
     val model = LocalTreeTests.train(oldDataset, strategy, parentUID = Some(uid),
       seed = getSeed)

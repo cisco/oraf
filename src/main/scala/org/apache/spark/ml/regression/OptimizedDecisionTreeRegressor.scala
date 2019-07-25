@@ -21,7 +21,7 @@ package org.apache.spark.ml.regression
 
 import org.apache.hadoop.fs.Path
 import org.apache.spark.annotation.Since
-import org.apache.spark.ml.feature.LabeledPoint
+import org.apache.spark.ml.feature.Instance
 import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.tree.OptimizedDecisionTreeModelReadWrite.NodeData
@@ -30,12 +30,12 @@ import org.apache.spark.ml.tree.impl.OptimizedRandomForest
 import org.apache.spark.ml.util.Instrumentation.instrumented
 import org.apache.spark.ml.util._
 import org.apache.spark.ml.{PredictionModel, Predictor}
+import org.apache.spark.mllib.linalg.{Vector => OldVector}
 import org.apache.spark.mllib.tree.configuration.{TimePredictionStrategy, Algo => OldAlgo, OptimizedForestStrategy => OldStrategy}
 import org.apache.spark.mllib.tree.model.{DecisionTreeModel => OldDecisionTreeModel}
-import org.apache.spark.mllib.linalg.{Vector => OldVector}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import org.json4s.JsonDSL._
 import org.json4s.{DefaultFormats, JObject}
 
@@ -136,7 +136,9 @@ class OptimizedDecisionTreeRegressor @Since("1.4.0") (@Since("1.4.0") override v
     val categoricalFeatures: Map[Int, Int] =
       MetadataUtils.getCategoricalFeatures(dataset.schema($(featuresCol)))
 
-    val oldDataset: RDD[LabeledPoint] = extractLabeledPoints(dataset)
+    val oldDataset: RDD[Instance] = dataset.select(col($(labelCol)), col($(featuresCol))).rdd.map {
+      case Row(label: Double, features: Vector) => Instance(label, 1.0, features)
+    }
     val strategy = getOldStrategy(categoricalFeatures)
 
     instr.logParams(this, params: _*)
@@ -147,7 +149,7 @@ class OptimizedDecisionTreeRegressor @Since("1.4.0") (@Since("1.4.0") override v
     trees.head.asInstanceOf[OptimizedDecisionTreeRegressionModel]
   }
 
-  private[ml] def train(data: RDD[LabeledPoint],
+  private[ml] def train(data: RDD[Instance],
                         oldStrategy: OldStrategy): OptimizedDecisionTreeRegressionModel = instrumented { instr =>
     instr.logPipelineStage(this)
     instr.logDataset(data)

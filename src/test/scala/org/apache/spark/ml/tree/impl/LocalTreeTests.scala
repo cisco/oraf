@@ -21,7 +21,7 @@ package org.apache.spark.ml.tree.impl
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.classification.OptimizedDecisionTreeClassificationModel
-import org.apache.spark.ml.feature.LabeledPoint
+import org.apache.spark.ml.feature.Instance
 import org.apache.spark.ml.regression.OptimizedDecisionTreeRegressionModel
 import org.apache.spark.ml.tree._
 import org.apache.spark.mllib.tree.configuration.{Algo => OldAlgo, Strategy => OldStrategy}
@@ -67,7 +67,7 @@ private[impl] object LocalTreeTests extends Logging {
    * Only used for testing.
    */
   private[impl] def train(
-      input: RDD[LabeledPoint],
+      input: RDD[Instance],
       strategy: OldStrategy,
       seed: Long,
       parentUID: Option[String] = None): OptimizedDecisionTreeModel = {
@@ -79,7 +79,7 @@ private[impl] object LocalTreeTests extends Logging {
 
     // Construct metadata, find splits
     val metadata = OptimizedDecisionTreeMetadata.buildMetadata(input, strategy)
-    val splits = RandomForest.findSplits(input, metadata, seed)
+    val splits = OptimizedRandomForest.findSplits(input, metadata, seed)
 
     // Bin feature values (convert to TreePoint representation).
     val treeInput = OptimizedTreePoint.convertToTreeRDD(input, splits, metadata).collect()
