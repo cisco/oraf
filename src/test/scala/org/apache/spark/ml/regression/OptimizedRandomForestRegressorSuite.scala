@@ -20,8 +20,8 @@
 package org.apache.spark.ml.regression
 
 import org.apache.spark.SparkFunSuite
-import org.apache.spark.ml.feature.LabeledPoint
-import org.apache.spark.ml.tree.impl.OptimizedTreeTests
+import org.apache.spark.ml.feature.{Instance, LabeledPoint}
+import org.apache.spark.ml.tree.impl.{OptimizedRandomForestSuite, OptimizedTreeTests}
 import org.apache.spark.ml.util.{DefaultReadWriteTest, MLTest, MLTestingUtils}
 import org.apache.spark.mllib.regression.{LabeledPoint => OldLabeledPoint}
 import org.apache.spark.mllib.tree.configuration.{Algo => OldAlgo}
@@ -37,13 +37,12 @@ class OptimizedRandomForestRegressorSuite extends MLTest with DefaultReadWriteTe
   import OptimizedRandomForestRegressorSuite.compareAPIs
   import testImplicits._
 
-  private var orderedLabeledPoints50_1000: RDD[LabeledPoint] = _
+  private var orderedInstances50_1000: RDD[Instance] = _
 
   override def beforeAll() {
     super.beforeAll()
-    orderedLabeledPoints50_1000 =
-      sc.parallelize(EnsembleTestHelper.generateOrderedLabeledPoints(numFeatures = 50, 1000)
-        .map(_.asML))
+    orderedInstances50_1000 =
+      sc.parallelize(OptimizedRandomForestSuite.generateOrderedInstances(numFeatures = 50, 1000))
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -66,7 +65,7 @@ class OptimizedRandomForestRegressorSuite extends MLTest with DefaultReadWriteTe
       .setNumTrees(1)
       .setFeatureSubsetStrategy("auto")
       .setSeed(123)
-    compareAPIs(orderedLabeledPoints50_1000, newRF, optimizedRF, categoricalFeaturesInfo)
+    compareAPIs(orderedInstances50_1000, newRF, optimizedRF, categoricalFeaturesInfo)
   }
 
   test("Regression with continuous features:" +
@@ -94,7 +93,7 @@ class OptimizedRandomForestRegressorSuite extends MLTest with DefaultReadWriteTe
       .setFeatureSubsetStrategy("auto")
       .setSeed(123)
 
-    val df = orderedLabeledPoints50_1000.toDF()
+    val df = orderedInstances50_1000.toDF()
     val model = rf.fit(df)
     testPredictionModelSinglePrediction(model, df)
   }
@@ -139,16 +138,20 @@ private object OptimizedRandomForestRegressorSuite extends SparkFunSuite {
     * Convert the old model to the new format, compare them, and fail if they are not exactly equal.
     */
   def compareAPIs(
-                   data: RDD[LabeledPoint],
+                   data: RDD[Instance],
                    rf: RandomForestRegressor,
                    orf: OptimizedRandomForestRegressor,
                    categoricalFeatures: Map[Int, Int]): Unit = {
     val numFeatures = data.first().features.size
+    val oldPoints = data.map(i => LabeledPoint(i.label, i.features))
+
     val newData: DataFrame = OptimizedTreeTests.setMetadata(data, categoricalFeatures, numClasses = 0)
-    val newModel = rf.fit(newData)
+    val oldData: DataFrame = OptimizedTreeTests.setMetadataForLabeledPoints(oldPoints, categoricalFeatures, numClasses = 0)
+
+    val oldModel = rf.fit(oldData)
     val optimizedModel = orf.fit(newData)
     // Use parent from newTree since this is not checked anyways.
-    OptimizedTreeTests.checkEqualOldRegression(newModel, optimizedModel)
-    assert(newModel.numFeatures === numFeatures)
+    OptimizedTreeTests.checkEqualOldRegression(oldModel, optimizedModel)
+    assert(oldModel.numFeatures === numFeatures)
   }
 }

@@ -39,7 +39,7 @@ import org.apache.spark.rdd.RDD
  * @param binnedFeatures  Binned feature values.
  *                        Same length as LabeledPoint.features, but values are bin indices.
  */
-class OptimizedTreePoint(label: Double, binnedFeatures: Array[Int], sampleWeight: Double)
+class OptimizedTreePoint(label: Double, binnedFeatures: Array[Int], val sampleWeight: Double)
   extends TreePoint(label, binnedFeatures) with Serializable {
 }
 
@@ -95,7 +95,7 @@ object OptimizedTreePoint {
         findBin(featureIndex, instance, featureArity(featureIndex), thresholds(featureIndex))
       featureIndex += 1
     }
-    new OptimizedTreePoint(instance.label, arr, 1.0)
+    new OptimizedTreePoint(instance.label, arr, instance.weight)
   }
   /**
    * Find discretized value for one (labeledPoint, feature).

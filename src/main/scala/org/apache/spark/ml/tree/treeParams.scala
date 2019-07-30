@@ -22,12 +22,13 @@ package org.apache.spark.ml.tree
 import java.util.Locale
 
 import org.apache.spark.ml.param._
+import org.apache.spark.ml.param.shared.HasWeightCol
 import org.apache.spark.ml.tree.impl.LocalDecisionTree
 import org.apache.spark.mllib.tree.configuration.{DefaultTimePredictionStrategy, OptimizedForestStrategy, TimePredictionStrategy, Algo => OldAlgo}
 import org.apache.spark.mllib.tree.impurity.{Impurity => OldImpurity}
 
 
-private[ml] trait OptimizedDecisionTreeParams extends DecisionTreeParams {
+private[ml] trait OptimizedDecisionTreeParams extends DecisionTreeParams with HasWeightCol {
 
   final val maxMemoryMultiplier: DoubleParam = new DoubleParam(this, "maxMemoryMultiplier", "",
     ParamValidators.gt(0.0))
@@ -43,7 +44,7 @@ private[ml] trait OptimizedDecisionTreeParams extends DecisionTreeParams {
 
   setDefault(maxDepth -> 5, maxBins -> 32, minInstancesPerNode -> 1, minInfoGain -> 0.0,
     maxMemoryInMB -> 256, cacheNodeIds -> true, checkpointInterval -> 10,
-    maxMemoryMultiplier -> 4, maxTasksPerBin -> Int.MaxValue)
+    maxMemoryMultiplier -> 4, maxTasksPerBin -> Int.MaxValue, weightCol -> "weight")
 
   @deprecated("This method is deprecated and will be removed in 3.0.0.", "2.1.0")
   def setMaxMemoryMultiplier(value: Double): this.type = set(maxMemoryMultiplier, value)

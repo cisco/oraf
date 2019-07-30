@@ -20,8 +20,9 @@
 package org.apache.spark.ml.regression
 
 import org.apache.spark.SparkFunSuite
-import org.apache.spark.ml.feature.LabeledPoint
-import org.apache.spark.ml.tree.impl.{OptimizedTreeTests, TreeTests}
+import org.apache.spark.ml.feature.{Instance, LabeledPoint}
+import org.apache.spark.ml.linalg.Vectors
+import org.apache.spark.ml.tree.impl.{OptimizedRandomForestSuite, OptimizedTreeTests, TreeTests}
 import org.apache.spark.ml.util.{DefaultReadWriteTest, MLTest, MLTestingUtils}
 import org.apache.spark.mllib.regression.{LabeledPoint => OldLabeledPoint}
 import org.apache.spark.mllib.tree.{DecisionTree => OldDecisionTree, DecisionTreeSuite => OldDecisionTreeSuite}
@@ -34,7 +35,7 @@ class OptimizedDecisionTreeRegressorSuite extends MLTest with DefaultReadWriteTe
   import OptimizedDecisionTreeRegressorSuite.compareAPIs
   import testImplicits._
 
-  private var categoricalDataPointsRDD: RDD[LabeledPoint] = _
+  private var categoricalDataPointsRDD: RDD[Instance] = _
   private var linearRegressionData: DataFrame = _
 
   private val seed = 42
@@ -42,10 +43,11 @@ class OptimizedDecisionTreeRegressorSuite extends MLTest with DefaultReadWriteTe
   override def beforeAll() {
     super.beforeAll()
     categoricalDataPointsRDD =
-      sc.parallelize(OldDecisionTreeSuite.generateCategoricalDataPoints().map(_.asML))
+      sc.parallelize(OptimizedRandomForestSuite.generateCategoricalInstances())
     linearRegressionData = sc.parallelize(LinearDataGenerator.generateLinearInput(
       intercept = 6.3, weights = Array(4.7, 7.2), xMean = Array(0.9, -1.3),
-      xVariance = Array(0.7, 1.2), nPoints = 1000, seed, eps = 0.5), 2).map(_.asML).toDF()
+      xVariance = Array(0.7, 1.2), nPoints = 1000, seed, eps = 0.5), 2)
+      .map(lp => Instance(lp.label, 1.0, Vectors.dense(lp.features.toArray))).toDF()
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -82,7 +84,7 @@ class OptimizedDecisionTreeRegressorSuite extends MLTest with DefaultReadWriteTe
 
   test("copied model must have the same parent") {
     val categoricalFeatures = Map(0 -> 2, 1 -> 2)
-    val df = TreeTests.setMetadata(categoricalDataPointsRDD, categoricalFeatures, numClasses = 0)
+    val df = OptimizedTreeTests.setMetadata(categoricalDataPointsRDD, categoricalFeatures, numClasses = 0)
     val dtr = new OptimizedDecisionTreeRegressor()
       .setImpurity("variance")
       .setMaxDepth(2)
@@ -98,7 +100,7 @@ class OptimizedDecisionTreeRegressorSuite extends MLTest with DefaultReadWriteTe
       .setSeed(123)
 
     // In this data, feature 1 is very important.
-    val data: RDD[LabeledPoint] = OptimizedTreeTests.featureImportanceData(sc)
+    val data: RDD[Instance] = OptimizedTreeTests.featureImportanceData(sc)
     val categoricalFeatures = Map.empty[Int, Int]
     val df: DataFrame = OptimizedTreeTests.setMetadata(data, categoricalFeatures, 0)
 
@@ -155,16 +157,20 @@ private[ml] object OptimizedDecisionTreeRegressorSuite extends SparkFunSuite {
     * Convert the old tree to the new format, compare them, and fail if they are not exactly equal.
     */
   def compareAPIs(
-                   data: RDD[LabeledPoint],
+                   data: RDD[Instance],
                    dt: DecisionTreeRegressor,
                    odt: OptimizedDecisionTreeRegressor,
                    categoricalFeatures: Map[Int, Int]): Unit = {
     val numFeatures = data.first().features.size
+    val oldPoints = data.map(i => LabeledPoint(i.label, i.features))
+
     val newData: DataFrame = OptimizedTreeTests.setMetadata(data, categoricalFeatures, numClasses = 0)
-    val newTree = dt.fit(newData)
+    val oldData: DataFrame = OptimizedTreeTests.setMetadataForLabeledPoints(oldPoints, categoricalFeatures, numClasses = 0)
+
+    val oldTree = dt.fit(oldData)
     val optimizedTree = odt.fit(newData)
     // Use parent from newTree since this is not checked anyways.
-    OptimizedTreeTests.checkEqual(newTree, optimizedTree)
+    OptimizedTreeTests.checkEqual(oldTree, optimizedTree)
     assert(optimizedTree.numFeatures === numFeatures)
   }
 }

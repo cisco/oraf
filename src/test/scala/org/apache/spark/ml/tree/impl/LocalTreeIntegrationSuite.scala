@@ -21,7 +21,7 @@ package org.apache.spark.ml.tree.impl
 
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.ml.Estimator
-import org.apache.spark.ml.feature.LabeledPoint
+import org.apache.spark.ml.feature.{Instance, LabeledPoint}
 import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.regression.DecisionTreeRegressor
 import org.apache.spark.mllib.tree.DecisionTreeSuite
@@ -58,25 +58,25 @@ class LocalTreeIntegrationSuite extends SparkFunSuite with MLlibTestSparkContext
 
 
   test("Local & distributed training produce the same tree on a toy dataset") {
-    val data = sc.parallelize(Range(0, 8).map(x => LabeledPoint(x, Vectors.dense(x))))
+    val data = sc.parallelize(Range(0, 8).map(x => Instance(x, 1.0, Vectors.dense(x))))
     val df = spark.createDataFrame(data)
     testEquivalence(df, OptimizedTreeTests.allParamSettings)
   }
 
   test("Local & distributed training produce the same tree on a slightly larger toy dataset") {
-    val data = sc.parallelize(Range(0, 16).map(x => LabeledPoint(x, Vectors.dense(x))))
+    val data = sc.parallelize(Range(0, 16).map(x => Instance(x, 1.0, Vectors.dense(x))))
     val df = spark.createDataFrame(data)
     testEquivalence(df, medDepthTreeSettings)
   }
 
   test("Local & distributed training produce the same tree on a larger toy dataset") {
-    val data = sc.parallelize(Range(0, 64).map(x => LabeledPoint(x, Vectors.dense(x))))
+    val data = sc.parallelize(Range(0, 64).map(x => Instance(x, 1.0, Vectors.dense(x))))
     val df = spark.createDataFrame(data)
     testEquivalence(df, medDepthTreeSettings)
   }
 
   test("Local & distributed training produce same tree on a dataset of categorical features") {
-    val data = sc.parallelize(DecisionTreeSuite.generateCategoricalDataPoints().map(_.asML))
+    val data = sc.parallelize(OptimizedRandomForestSuite.generateCategoricalInstances())
     // Create a map of categorical feature index to arity; each feature has arity nclasses
     val featuresMap: Map[Int, Int] = Map(0 -> 3, 1 -> 3)
     // Convert the data RDD to a DataFrame with metadata indicating the arity of each of its
@@ -92,13 +92,14 @@ class LocalTreeIntegrationSuite extends SparkFunSuite with MLlibTestSparkContext
     val params = medDepthTreeSettings
     val data = LogisticRegressionDataGenerator.generateLogisticRDD(spark.sparkContext,
       nexamples = 1000, nfeatures = 5, eps = 2.0, nparts = 1, probOne = 0.2)
-      .map(_.asML).toDF().cache()
+      .map(lp => Instance(lp.label, 1.0, Vectors.dense(lp.features.toArray)))
+      .toDF().cache()
     testEquivalence(data, params)
   }
 
   test("Local & distributed training produce the same tree on a dataset of constant features") {
     // Generate constant, continuous data
-    val data = sc.parallelize(Range(0, 8).map(_ => LabeledPoint(1, Vectors.dense(1))))
+    val data = sc.parallelize(Range(0, 8).map(_ => Instance(1, 1.0, Vectors.dense(1))))
     val df = spark.createDataFrame(data)
     testEquivalence(df, OptimizedTreeTests.allParamSettings)
   }

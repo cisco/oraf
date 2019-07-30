@@ -20,10 +20,10 @@
 package org.apache.spark.ml.classification
 
 import org.apache.hadoop.fs.Path
-import org.apache.spark.annotation.Since
-import org.apache.spark.ml.feature.{Instance, LabeledPoint}
+import org.apache.spark.annotation.{DeveloperApi, Since}
+import org.apache.spark.ml.feature.Instance
 import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector, Vectors}
-import org.apache.spark.ml.param.ParamMap
+import org.apache.spark.ml.param.{Param, ParamMap, Params}
 import org.apache.spark.ml.tree.OptimizedDecisionTreeModelReadWrite.NodeData
 import org.apache.spark.ml.tree._
 import org.apache.spark.ml.tree.impl.OptimizedRandomForest
@@ -33,8 +33,8 @@ import org.apache.spark.mllib.linalg.{Vector => OldVector}
 import org.apache.spark.mllib.tree.configuration.{TimePredictionStrategy, Algo => OldAlgo, OptimizedForestStrategy => OldStrategy}
 import org.apache.spark.mllib.tree.model.{DecisionTreeModel => OldDecisionTreeModel}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Dataset, Row}
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.{Dataset, Row}
 import org.json4s.JsonDSL._
 import org.json4s.{DefaultFormats, JObject}
 
@@ -146,12 +146,12 @@ class OptimizedDecisionTreeClassifier @Since("1.4.0") (
 
     require(numClasses > 0, s"Classifier (in extractLabeledPoints) found numClasses =" +
       s" $numClasses, but requires numClasses > 0.")
-    val oldDataset: RDD[Instance] = dataset.select(col($(labelCol)), col($(featuresCol))).rdd.map {
-      case Row(label: Double, features: Vector) =>
+    val oldDataset: RDD[Instance] = dataset.select(col($(labelCol)), col($(featuresCol)), col($(weightCol))).rdd.map {
+      case Row(label: Double, features: Vector, weight: Double) =>
         require(label % 1 == 0 && label >= 0 && label < numClasses, s"Classifier was given" +
           s" dataset with invalid label $label.  Labels must be integers in range" +
           s" [0, $numClasses).")
-        Instance(label, 1.0, features)
+        Instance(label, weight, features)
     }
 
     val strategy =

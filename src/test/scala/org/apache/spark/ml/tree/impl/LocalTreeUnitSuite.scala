@@ -20,7 +20,7 @@
 package org.apache.spark.ml.tree.impl
 
 import org.apache.spark.SparkFunSuite
-import org.apache.spark.ml.feature.LabeledPoint
+import org.apache.spark.ml.feature.{Instance, LabeledPoint}
 import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.tree._
 import org.apache.spark.ml.util.DefaultReadWriteTest
@@ -32,7 +32,7 @@ class LocalTreeUnitSuite
 
   test("Fit a single decision tree regressor on constant features") {
     // Generate constant, continuous data
-    val data = sc.parallelize(Range(0, 8).map(_ => LabeledPoint(1, Vectors.dense(1))))
+    val data = sc.parallelize(Range(0, 8).map(_ => Instance(1, 1.0, Vectors.dense(1))))
     val df = spark.sqlContext.createDataFrame(data)
     // Initialize estimator
     val dt = new LocalDecisionTreeRegressor()
@@ -48,7 +48,7 @@ class LocalTreeUnitSuite
 
   test("Fit a single decision tree regressor on some continuous features") {
     // Generate continuous data
-    val data = sc.parallelize(Range(0, 8).map(x => LabeledPoint(x, Vectors.dense(x))))
+    val data = sc.parallelize(Range(0, 8).map(x => Instance(x, 1.0, Vectors.dense(x))))
     val df = spark.createDataFrame(data)
     // Initialize estimator
     val dt = new LocalDecisionTreeRegressor()

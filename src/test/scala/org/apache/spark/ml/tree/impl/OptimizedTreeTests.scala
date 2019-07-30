@@ -22,7 +22,7 @@ package org.apache.spark.ml.tree.impl
 import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.ml.attribute.{AttributeGroup, NominalAttribute, NumericAttribute}
 import org.apache.spark.ml.classification.{DecisionTreeClassificationModel, OptimizedDecisionTreeClassificationModel}
-import org.apache.spark.ml.feature.LabeledPoint
+import org.apache.spark.ml.feature.{Instance, LabeledPoint}
 import org.apache.spark.ml.linalg.Vectors
 import org.apache.spark.ml.regression.{DecisionTreeRegressionModel, OptimizedDecisionTreeRegressionModel}
 import org.apache.spark.ml.tree._
@@ -44,7 +44,7 @@ private[ml] object OptimizedTreeTests extends SparkFunSuite {
    * @return DataFrame with metadata
    */
   def setMetadata(
-      data: RDD[LabeledPoint],
+      data: RDD[Instance],
       categoricalFeatures: Map[Int, Int],
       numClasses: Int): DataFrame = {
     val spark = SparkSession.builder()
@@ -68,18 +68,61 @@ private[ml] object OptimizedTreeTests extends SparkFunSuite {
       NominalAttribute.defaultAttr.withName("label").withNumValues(numClasses)
     }
     val labelMetadata = labelAttribute.toMetadata()
+
+    val weightAttribute = NumericAttribute.defaultAttr.withName("weight")
+    val weightMetadata = weightAttribute.toMetadata()
     df.select(df("features").as("features", featuresMetadata),
-      df("label").as("label", labelMetadata))
+      df("label").as("label", labelMetadata),
+      df("weight").as("weight", weightMetadata)
+    )
+  }
+
+  def setMetadataForLabeledPoints(
+                   data: RDD[LabeledPoint],
+                   categoricalFeatures: Map[Int, Int],
+                   numClasses: Int): DataFrame = {
+    val spark = SparkSession.builder()
+      .sparkContext(data.sparkContext)
+      .getOrCreate()
+    import spark.implicits._
+
+    val df = data.toDF()
+    val numFeatures = data.first().features.size
+    val featuresAttributes = Range(0, numFeatures).map { feature =>
+      if (categoricalFeatures.contains(feature)) {
+        NominalAttribute.defaultAttr.withIndex(feature).withNumValues(categoricalFeatures(feature))
+      } else {
+        NumericAttribute.defaultAttr.withIndex(feature)
+      }
+    }.toArray
+    val featuresMetadata = new AttributeGroup("features", featuresAttributes).toMetadata()
+    val labelAttribute = if (numClasses == 0) {
+      NumericAttribute.defaultAttr.withName("label")
+    } else {
+      NominalAttribute.defaultAttr.withName("label").withNumValues(numClasses)
+    }
+    val labelMetadata = labelAttribute.toMetadata()
+    df.select(df("features").as("features", featuresMetadata),
+      df("label").as("label", labelMetadata)
+    )
   }
 
   /**
    * Java-friendly version of `setMetadata()`
    */
   def setMetadata(
-      data: JavaRDD[LabeledPoint],
+      data: JavaRDD[Instance],
       categoricalFeatures: java.util.Map[java.lang.Integer, java.lang.Integer],
       numClasses: Int): DataFrame = {
     setMetadata(data.rdd, categoricalFeatures.asInstanceOf[java.util.Map[Int, Int]].asScala.toMap,
+      numClasses)
+  }
+
+  def setMetadataForLabeledPoints(
+                   data: JavaRDD[LabeledPoint],
+                   categoricalFeatures: java.util.Map[java.lang.Integer, java.lang.Integer],
+                   numClasses: Int): DataFrame = {
+    setMetadataForLabeledPoints(data.rdd, categoricalFeatures.asInstanceOf[java.util.Map[Int, Int]].asScala.toMap,
       numClasses)
   }
 
@@ -96,14 +139,42 @@ private[ml] object OptimizedTreeTests extends SparkFunSuite {
       data: DataFrame,
       numClasses: Int,
       labelColName: String,
-      featuresColName: String): DataFrame = {
+      featuresColName: String,
+      weightColName: String): DataFrame = {
     val labelAttribute = if (numClasses == 0) {
       NumericAttribute.defaultAttr.withName(labelColName)
     } else {
       NominalAttribute.defaultAttr.withName(labelColName).withNumValues(numClasses)
     }
     val labelMetadata = labelAttribute.toMetadata()
-    data.select(data(featuresColName), data(labelColName).as(labelColName, labelMetadata))
+
+    val weightAttribute = NumericAttribute.defaultAttr.withName(labelColName)
+    val weightMetadata = weightAttribute.toMetadata()
+
+    data.select(
+      data(featuresColName),
+      data(labelColName).as(labelColName, labelMetadata),
+      data(weightColName).as(weightColName, weightMetadata)
+    )
+  }
+
+  def setMetadataForLabeledPoints(
+                   data: DataFrame,
+                   numClasses: Int,
+                   labelColName: String,
+                   featuresColName: String,
+                   weightColName: String): DataFrame = {
+    val labelAttribute = if (numClasses == 0) {
+      NumericAttribute.defaultAttr.withName(labelColName)
+    } else {
+      NominalAttribute.defaultAttr.withName(labelColName).withNumValues(numClasses)
+    }
+    val labelMetadata = labelAttribute.toMetadata()
+
+    data.select(
+      data(featuresColName),
+      data(labelColName).as(labelColName, labelMetadata)
+    )
   }
 
   /** Returns a DecisionTreeMetadata instance with hard-coded values for use in tests */
@@ -245,24 +316,24 @@ private[ml] object OptimizedTreeTests extends SparkFunSuite {
   /**
    * Create some toy data for testing feature importances.
    */
-  def featureImportanceData(sc: SparkContext): RDD[LabeledPoint] = sc.parallelize(Seq(
-    new LabeledPoint(0, Vectors.dense(1, 0, 0, 0, 1)),
-    new LabeledPoint(1, Vectors.dense(1, 1, 0, 1, 0)),
-    new LabeledPoint(1, Vectors.dense(1, 1, 0, 0, 0)),
-    new LabeledPoint(0, Vectors.dense(1, 0, 0, 0, 0)),
-    new LabeledPoint(1, Vectors.dense(1, 1, 0, 0, 0))
+  def featureImportanceData(sc: SparkContext): RDD[Instance] = sc.parallelize(Seq(
+    new Instance(0, 1.0, Vectors.dense(1, 0, 0, 0, 1)),
+    new Instance(1, 1.0, Vectors.dense(1, 1, 0, 1, 0)),
+    new Instance(1, 1.0, Vectors.dense(1, 1, 0, 0, 0)),
+    new Instance(0, 1.0, Vectors.dense(1, 0, 0, 0, 0)),
+    new Instance(1, 1.0, Vectors.dense(1, 1, 0, 0, 0))
   ))
 
   /**
    * Create some toy data for testing correctness of variance.
    */
-  def varianceData(sc: SparkContext): RDD[LabeledPoint] = sc.parallelize(Seq(
-    new LabeledPoint(1.0, Vectors.dense(Array(0.0))),
-    new LabeledPoint(2.0, Vectors.dense(Array(1.0))),
-    new LabeledPoint(3.0, Vectors.dense(Array(2.0))),
-    new LabeledPoint(10.0, Vectors.dense(Array(3.0))),
-    new LabeledPoint(12.0, Vectors.dense(Array(4.0))),
-    new LabeledPoint(14.0, Vectors.dense(Array(5.0)))
+  def varianceData(sc: SparkContext): RDD[Instance] = sc.parallelize(Seq(
+    new Instance(1.0, 1.0, Vectors.dense(Array(0.0))),
+    new Instance(2.0, 1.0,  Vectors.dense(Array(1.0))),
+    new Instance(3.0, 1.0,  Vectors.dense(Array(2.0))),
+    new Instance(10.0, 1.0, Vectors.dense(Array(3.0))),
+    new Instance(12.0, 1.0, Vectors.dense(Array(4.0))),
+    new Instance(14.0, 1.0, Vectors.dense(Array(5.0)))
   ))
 
   /**
@@ -271,16 +342,16 @@ private[ml] object OptimizedTreeTests extends SparkFunSuite {
    * [[depth]] (unless splitting halts early due to other constraints e.g. max depth or min
    * info gain).
    */
-  def deepTreeData(sc: SparkContext, depth: Int): RDD[LabeledPoint] = {
+  def deepTreeData(sc: SparkContext, depth: Int): RDD[Instance] = {
     // Create a dataset with [[depth]] binary features; a training point has a label of 1
     // iff all features have a value of 1.
     sc.parallelize(Range(0, depth + 1).map { idx =>
       val features = Array.fill[Double](depth)(1)
       if (idx == depth) {
-        LabeledPoint(1.0, Vectors.dense(features))
+        Instance(1.0, 1.0, Vectors.dense(features))
       } else {
         features(idx) = 0.0
-        LabeledPoint(0.0, Vectors.dense(features))
+        Instance(0.0, 1.0, Vectors.dense(features))
       }
     })
   }
@@ -304,16 +375,16 @@ private[ml] object OptimizedTreeTests extends SparkFunSuite {
   )
 
   /** Data for tree read/write tests which produces a non-trivial tree. */
-  def getTreeReadWriteData(sc: SparkContext): RDD[LabeledPoint] = {
+  def getTreeReadWriteData(sc: SparkContext): RDD[Instance] = {
     val arr = Array(
-      LabeledPoint(0.0, Vectors.dense(0.0, 0.0)),
-      LabeledPoint(1.0, Vectors.dense(0.0, 1.0)),
-      LabeledPoint(0.0, Vectors.dense(0.0, 0.0)),
-      LabeledPoint(0.0, Vectors.dense(0.0, 2.0)),
-      LabeledPoint(0.0, Vectors.dense(1.0, 0.0)),
-      LabeledPoint(1.0, Vectors.dense(1.0, 1.0)),
-      LabeledPoint(1.0, Vectors.dense(1.0, 0.0)),
-      LabeledPoint(1.0, Vectors.dense(1.0, 2.0)))
+      Instance(0.0, 1.0, Vectors.dense(0.0, 0.0)),
+      Instance(1.0, 1.0, Vectors.dense(0.0, 1.0)),
+      Instance(0.0, 1.0, Vectors.dense(0.0, 0.0)),
+      Instance(0.0, 1.0, Vectors.dense(0.0, 2.0)),
+      Instance(0.0, 1.0, Vectors.dense(1.0, 0.0)),
+      Instance(1.0, 1.0, Vectors.dense(1.0, 1.0)),
+      Instance(1.0, 1.0, Vectors.dense(1.0, 0.0)),
+      Instance(1.0, 1.0, Vectors.dense(1.0, 2.0)))
     sc.parallelize(arr)
   }
 }

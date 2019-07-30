@@ -41,122 +41,13 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
 
   private val seed = 42
 
-  def generateOrderedInstances(numFeatures: Int, numInstances: Int): Array[Instance] = {
-    val arr = new Array[Instance](numInstances)
-    for (i <- 0 until numInstances) {
-      val label = if (i < numInstances / 10) {
-        0.0
-      } else if (i < numInstances / 2) {
-        1.0
-      } else if (i < numInstances * 0.9) {
-        0.0
-      } else {
-        1.0
-      }
-      val features = Array.fill[Double](numFeatures)(i.toDouble)
-      arr(i) = Instance(label, 1.0, Vectors.dense(features))
-    }
-    arr
-  }
-
-  def generateOrderedInstancesWithLabel1(): Array[Instance] = {
-    val arr = new Array[Instance](1000)
-    for (i <- 0 until 1000) {
-      val lp = Instance(1.0, 1.0, Vectors.dense(i.toDouble, 999.0 - i))
-      arr(i) = lp
-    }
-    arr
-  }
-
-  def generateOrderedInstancesWithLabel0(): Array[Instance] = {
-    val arr = new Array[Instance](1000)
-    for (i <- 0 until 1000) {
-      val lp = Instance(0.0, 1.0, Vectors.dense(i.toDouble, 1000.0 - i))
-      arr(i) = lp
-    }
-    arr
-  }
-
-  def generateOrderedInstances(): Array[Instance] = {
-    val arr = new Array[Instance](1000)
-    for (i <- 0 until 1000) {
-      val label = if (i < 100) {
-        0.0
-      } else if (i < 500) {
-        1.0
-      } else if (i < 900) {
-        0.0
-      } else {
-        1.0
-      }
-      arr(i) = Instance(label, 1.0, Vectors.dense(i.toDouble, 1000.0 - i))
-    }
-    arr
-  }
-
-  def generateCategoricalInstances(): Array[Instance] = {
-    val arr = new Array[Instance](1000)
-    for (i <- 0 until 1000) {
-      if (i < 600) {
-        arr(i) = Instance(1.0, 1.0, Vectors.dense(0.0, 1.0))
-      } else {
-        arr(i) = Instance(0.0, 1.0, Vectors.dense(1.0, 0.0))
-      }
-    }
-    arr
-  }
-
-  def generateCategoricalInstancesAsJavaList(): java.util.List[Instance] = {
-    generateCategoricalInstances().toList.asJava
-  }
-
-  def generateCategoricalInstancesForMulticlass(): Array[Instance] = {
-    val arr = new Array[Instance](3000)
-    for (i <- 0 until 3000) {
-      if (i < 1000) {
-        arr(i) = Instance(2.0, 1.0, Vectors.dense(2.0, 2.0))
-      } else if (i < 2000) {
-        arr(i) = Instance(1.0, 1.0, Vectors.dense(1.0, 2.0))
-      } else {
-        arr(i) = Instance(2.0, 1.0, Vectors.dense(2.0, 2.0))
-      }
-    }
-    arr
-  }
-
-  def generateContinuousInstancesForMulticlass(): Array[Instance] = {
-    val arr = new Array[Instance](3000)
-    for (i <- 0 until 3000) {
-      if (i < 2000) {
-        arr(i) = Instance(2.0, 1.0, Vectors.dense(2.0, i))
-      } else {
-        arr(i) = Instance(1.0, 1.0, Vectors.dense(2.0, i))
-      }
-    }
-    arr
-  }
-
-  def generateCategoricalInstancesForMulticlassForOrderedFeatures():
-  Array[Instance] = {
-    val arr = new Array[Instance](3000)
-    for (i <- 0 until 3000) {
-      if (i < 1001) {
-        arr(i) = Instance(2.0, 1.0, Vectors.dense(2.0, 2.0))
-      } else if (i < 2000) {
-        arr(i) = Instance(1.0, 1.0, Vectors.dense(1.0, 2.0))
-      } else {
-        arr(i) = Instance(1.0, 1.0, Vectors.dense(2.0, 2.0))
-      }
-    }
-    arr
-  }
 
   /////////////////////////////////////////////////////////////////////////////
   // Tests for split calculation
   /////////////////////////////////////////////////////////////////////////////
 
   test("Binary classification with continuous features: split calculation") {
-    val arr = generateOrderedInstancesWithLabel1()
+    val arr = OptimizedRandomForestSuite.generateOrderedInstancesWithLabel1()
     assert(arr.length === 1000)
     val rdd = sc.parallelize(arr)
     val strategy = new OldStrategy(OldAlgo.Classification, Gini, 3, 2, 100)
@@ -168,7 +59,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
   }
 
   test("Binary classification with binary (ordered) categorical features: split calculation") {
-    val arr = generateCategoricalInstances()
+    val arr = OptimizedRandomForestSuite.generateCategoricalInstances()
     assert(arr.length === 1000)
     val rdd = sc.parallelize(arr)
     val strategy = new OldStrategy(OldAlgo.Classification, Gini, maxDepth = 2, numClasses = 2,
@@ -185,7 +76,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
 
   test("Binary classification with 3-ary (ordered) categorical features," +
     " with no samples for one category: split calculation") {
-    val arr = generateCategoricalInstances()
+    val arr = OptimizedRandomForestSuite.generateCategoricalInstances()
     assert(arr.length === 1000)
     val rdd = sc.parallelize(arr)
     val strategy = new OldStrategy(OldAlgo.Classification, Gini, maxDepth = 2, numClasses = 2,
@@ -348,7 +239,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
   }
 
   test("Multiclass classification with unordered categorical features: split calculations") {
-    val arr = generateCategoricalInstances()
+    val arr = OptimizedRandomForestSuite.generateCategoricalInstances()
     assert(arr.length === 1000)
     val rdd = sc.parallelize(arr)
     val strategy = new OldStrategy(
@@ -389,7 +280,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
   }
 
   test("Multiclass classification with ordered categorical features: split calculations") {
-    val arr = generateCategoricalInstancesForMulticlassForOrderedFeatures()
+    val arr = OptimizedRandomForestSuite.generateCategoricalInstancesForMulticlassForOrderedFeatures()
     assert(arr.length === 3000)
     val rdd = sc.parallelize(arr)
     val strategy = new OldStrategy(OldAlgo.Classification, Gini, maxDepth = 2, numClasses = 100,
@@ -541,7 +432,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
   }
 
   test("Second level node building with vs. without groups") {
-    val arr = generateOrderedInstances()
+    val arr = OptimizedRandomForestSuite.generateOrderedInstances()
     assert(arr.length === 1000)
     val rdd = sc.parallelize(arr)
     // For tree with 1 group
@@ -583,7 +474,7 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
 
   def binaryClassificationTestWithContinuousFeaturesAndSubsampledFeatures(strategy: OldStrategy) {
     val numFeatures = 50
-    val arr = generateOrderedInstances(numFeatures, 1000)
+    val arr = OptimizedRandomForestSuite.generateOrderedInstances(numFeatures, 1000)
     val rdd = sc.parallelize(arr)
 
     // Select feature subset for top nodes.  Return true if OK.
@@ -762,10 +653,120 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
   }
 }
 
-private object OptimizedRandomForestSuite {
+object OptimizedRandomForestSuite {
   def mapToVec(map: Map[Int, Double]): Vector = {
     val size = (map.keys.toSeq :+ 0).max + 1
     val (indices, values) = map.toSeq.sortBy(_._1).unzip
     Vectors.sparse(size, indices.toArray, values.toArray)
+  }
+
+  def generateOrderedInstances(numFeatures: Int, numInstances: Int): Array[Instance] = {
+    val arr = new Array[Instance](numInstances)
+    for (i <- 0 until numInstances) {
+      val label = if (i < numInstances / 10) {
+        0.0
+      } else if (i < numInstances / 2) {
+        1.0
+      } else if (i < numInstances * 0.9) {
+        0.0
+      } else {
+        1.0
+      }
+      val features = Array.fill[Double](numFeatures)(i.toDouble)
+      arr(i) = Instance(label, 1.0, Vectors.dense(features))
+    }
+    arr
+  }
+
+  def generateOrderedInstancesWithLabel1(): Array[Instance] = {
+    val arr = new Array[Instance](1000)
+    for (i <- 0 until 1000) {
+      val lp = Instance(1.0, 2.0, Vectors.dense(i.toDouble, 999.0 - i))
+      arr(i) = lp
+    }
+    arr
+  }
+
+  def generateOrderedInstancesWithLabel0(): Array[Instance] = {
+    val arr = new Array[Instance](1000)
+    for (i <- 0 until 1000) {
+      val lp = Instance(0.0, 2.0, Vectors.dense(i.toDouble, 1000.0 - i))
+      arr(i) = lp
+    }
+    arr
+  }
+
+  def generateOrderedInstances(): Array[Instance] = {
+    val arr = new Array[Instance](1000)
+    for (i <- 0 until 1000) {
+      val label = if (i < 100) {
+        0.0
+      } else if (i < 500) {
+        1.0
+      } else if (i < 900) {
+        0.0
+      } else {
+        1.0
+      }
+      arr(i) = Instance(label, 1.0, Vectors.dense(i.toDouble, 1000.0 - i))
+    }
+    arr
+  }
+
+  def generateCategoricalInstances(): Array[Instance] = {
+    val arr = new Array[Instance](1000)
+    for (i <- 0 until 1000) {
+      if (i < 600) {
+        arr(i) = Instance(1.0, 1.0, Vectors.dense(0.0, 1.0))
+      } else {
+        arr(i) = Instance(0.0, 1.0, Vectors.dense(1.0, 0.0))
+      }
+    }
+    arr
+  }
+
+  def generateCategoricalInstancesAsJavaList(): java.util.List[Instance] = {
+    generateCategoricalInstances().toList.asJava
+  }
+
+  def generateCategoricalInstancesForMulticlass(): Array[Instance] = {
+    val arr = new Array[Instance](3000)
+    for (i <- 0 until 3000) {
+      if (i < 1000) {
+        arr(i) = Instance(2.0, 1.0, Vectors.dense(2.0, 2.0))
+      } else if (i < 2000) {
+        arr(i) = Instance(1.0, 1.0, Vectors.dense(1.0, 2.0))
+      } else {
+        arr(i) = Instance(2.0, 1.0, Vectors.dense(2.0, 2.0))
+      }
+    }
+    arr
+  }
+
+  def generateContinuousInstancesForMulticlass(): Array[Instance] = {
+    val arr = new Array[Instance](3000)
+    for (i <- 0 until 3000) {
+      if (i < 2000) {
+        arr(i) = Instance(2.0, 1.0, Vectors.dense(2.0, i))
+      } else {
+        arr(i) = Instance(1.0, 1.0, Vectors.dense(2.0, i))
+      }
+    }
+    arr
+  }
+
+  def generateCategoricalInstancesForMulticlassForOrderedFeatures():
+  Array[Instance] = {
+    val arr = new Array[Instance](3000)
+    for (i <- 0 until 3000) {
+      if (i < 1001) {
+        arr(i) = Instance(2.0, 1.0, Vectors.dense(2.0, 2.0))
+      } else if (i < 2000) {
+        arr(i) = Instance(1.0, 1.0, Vectors.dense(1.0, 2.0))
+      } else {
+        arr(i) = Instance(1.0, 1.0, Vectors.dense(2.0, 2.0))
+      }
+    }
+    arr
   }
 }

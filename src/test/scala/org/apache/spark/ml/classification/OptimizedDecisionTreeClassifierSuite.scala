@@ -20,13 +20,14 @@
 package org.apache.spark.ml.classification
 
 import org.apache.spark.SparkFunSuite
-import org.apache.spark.ml.feature.LabeledPoint
+import org.apache.spark.ml.feature.{Instance, LabeledPoint}
 import org.apache.spark.ml.linalg.{Vector, Vectors}
 import org.apache.spark.ml.param.ParamsSuite
 import org.apache.spark.ml.tree.OptimizedLeafNode
 import org.apache.spark.ml.tree.impl.OptimizedTreeTests
 import org.apache.spark.ml.util.{DefaultReadWriteTest, MLTest, MLTestingUtils}
 import org.apache.spark.mllib.tree.{DecisionTreeSuite => OldDecisionTreeSuite}
+import org.apache.spark.ml.tree.impl.OptimizedRandomForestSuite
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row}
 
@@ -35,28 +36,27 @@ class OptimizedDecisionTreeClassifierSuite extends MLTest with DefaultReadWriteT
   import OptimizedDecisionTreeClassifierSuite.compareAPIs
   import testImplicits._
 
-  private var categoricalDataPointsRDD: RDD[LabeledPoint] = _
-  private var orderedLabeledPointsWithLabel0RDD: RDD[LabeledPoint] = _
-  private var orderedLabeledPointsWithLabel1RDD: RDD[LabeledPoint] = _
-  private var categoricalDataPointsForMulticlassRDD: RDD[LabeledPoint] = _
-  private var continuousDataPointsForMulticlassRDD: RDD[LabeledPoint] = _
-  private var categoricalDataPointsForMulticlassForOrderedFeaturesRDD: RDD[LabeledPoint] = _
+  private var categoricalDataPointsRDD: RDD[Instance] = _
+  private var orderedLabeledPointsWithLabel0RDD: RDD[Instance] = _
+  private var orderedLabeledPointsWithLabel1RDD: RDD[Instance] = _
+  private var categoricalDataPointsForMulticlassRDD: RDD[Instance] = _
+  private var continuousDataPointsForMulticlassRDD: RDD[Instance] = _
+  private var categoricalDataPointsForMulticlassForOrderedFeaturesRDD: RDD[Instance] = _
 
   override def beforeAll() {
     super.beforeAll()
     categoricalDataPointsRDD =
-      sc.parallelize(OldDecisionTreeSuite.generateCategoricalDataPoints()).map(_.asML)
+      sc.parallelize(OptimizedRandomForestSuite.generateCategoricalInstances())
     orderedLabeledPointsWithLabel0RDD =
-      sc.parallelize(OldDecisionTreeSuite.generateOrderedLabeledPointsWithLabel0()).map(_.asML)
+      sc.parallelize(OptimizedRandomForestSuite.generateOrderedInstancesWithLabel0())
     orderedLabeledPointsWithLabel1RDD =
-      sc.parallelize(OldDecisionTreeSuite.generateOrderedLabeledPointsWithLabel1()).map(_.asML)
+      sc.parallelize(OptimizedRandomForestSuite.generateOrderedInstancesWithLabel1())
     categoricalDataPointsForMulticlassRDD =
-      sc.parallelize(OldDecisionTreeSuite.generateCategoricalDataPointsForMulticlass()).map(_.asML)
+      sc.parallelize(OptimizedRandomForestSuite.generateCategoricalInstancesForMulticlass())
     continuousDataPointsForMulticlassRDD =
-      sc.parallelize(OldDecisionTreeSuite.generateContinuousDataPointsForMulticlass()).map(_.asML)
+      sc.parallelize(OptimizedRandomForestSuite.generateContinuousInstancesForMulticlass())
     categoricalDataPointsForMulticlassForOrderedFeaturesRDD = sc.parallelize(
-      OldDecisionTreeSuite.generateCategoricalDataPointsForMulticlassForOrderedFeatures())
-      .map(_.asML)
+      OptimizedRandomForestSuite.generateCategoricalInstancesForMulticlassForOrderedFeatures())
   }
 
   test("params") {
@@ -117,10 +117,10 @@ class OptimizedDecisionTreeClassifierSuite extends MLTest with DefaultReadWriteT
 
   test("Binary classification stump with 1 continuous feature, to check off-by-1 error") {
     val arr = Array(
-      LabeledPoint(0.0, Vectors.dense(0.0)),
-      LabeledPoint(1.0, Vectors.dense(1.0)),
-      LabeledPoint(1.0, Vectors.dense(2.0)),
-      LabeledPoint(1.0, Vectors.dense(3.0)))
+      Instance(0.0, 1.0, Vectors.dense(0.0)),
+      Instance(1.0, 1.0, Vectors.dense(1.0)),
+      Instance(1.0, 1.0, Vectors.dense(2.0)),
+      Instance(1.0, 1.0, Vectors.dense(3.0)))
     val rdd = sc.parallelize(arr)
     val dt = new DecisionTreeClassifier()
       .setImpurity("Gini")
@@ -134,10 +134,10 @@ class OptimizedDecisionTreeClassifierSuite extends MLTest with DefaultReadWriteT
 
   test("Binary classification stump with 2 continuous features") {
     val arr = Array(
-      LabeledPoint(0.0, Vectors.sparse(2, Seq((0, 0.0)))),
-      LabeledPoint(1.0, Vectors.sparse(2, Seq((1, 1.0)))),
-      LabeledPoint(0.0, Vectors.sparse(2, Seq((0, 0.0)))),
-      LabeledPoint(1.0, Vectors.sparse(2, Seq((1, 2.0)))))
+      Instance(0.0, 1.0, Vectors.sparse(2, Seq((0, 0.0)))),
+      Instance(1.0, 1.0, Vectors.sparse(2, Seq((1, 1.0)))),
+      Instance(0.0, 1.0, Vectors.sparse(2, Seq((0, 0.0)))),
+      Instance(1.0, 1.0, Vectors.sparse(2, Seq((1, 2.0)))))
     val rdd = sc.parallelize(arr)
     val dt = new DecisionTreeClassifier()
       .setImpurity("Gini")
@@ -228,9 +228,9 @@ class OptimizedDecisionTreeClassifierSuite extends MLTest with DefaultReadWriteT
 
   test("split must satisfy min instances per node requirements") {
     val arr = Array(
-      LabeledPoint(0.0, Vectors.sparse(2, Seq((0, 0.0)))),
-      LabeledPoint(1.0, Vectors.sparse(2, Seq((1, 1.0)))),
-      LabeledPoint(0.0, Vectors.sparse(2, Seq((0, 1.0)))))
+      Instance(0.0, 1.0, Vectors.sparse(2, Seq((0, 0.0)))),
+      Instance(1.0, 1.0, Vectors.sparse(2, Seq((1, 1.0)))),
+      Instance(0.0, 1.0, Vectors.sparse(2, Seq((0, 1.0)))))
     val rdd = sc.parallelize(arr)
     val dt = new DecisionTreeClassifier()
       .setImpurity("Gini")
@@ -248,10 +248,10 @@ class OptimizedDecisionTreeClassifierSuite extends MLTest with DefaultReadWriteT
     // if a split does not satisfy min instances per node requirements,
     // this split is invalid, even though the information gain of split is large.
     val arr = Array(
-      LabeledPoint(0.0, Vectors.dense(0.0, 1.0)),
-      LabeledPoint(1.0, Vectors.dense(1.0, 1.0)),
-      LabeledPoint(0.0, Vectors.dense(0.0, 0.0)),
-      LabeledPoint(0.0, Vectors.dense(0.0, 0.0)))
+      Instance(0.0, 1.0, Vectors.dense(0.0, 1.0)),
+      Instance(1.0, 1.0, Vectors.dense(1.0, 1.0)),
+      Instance(0.0, 1.0, Vectors.dense(0.0, 0.0)),
+      Instance(0.0, 1.0, Vectors.dense(0.0, 0.0)))
     val rdd = sc.parallelize(arr)
     val dt = new DecisionTreeClassifier()
       .setImpurity("Gini")
@@ -270,9 +270,9 @@ class OptimizedDecisionTreeClassifierSuite extends MLTest with DefaultReadWriteT
 
   test("split must satisfy min info gain requirements") {
     val arr = Array(
-      LabeledPoint(0.0, Vectors.sparse(2, Seq((0, 0.0)))),
-      LabeledPoint(1.0, Vectors.sparse(2, Seq((1, 1.0)))),
-      LabeledPoint(0.0, Vectors.sparse(2, Seq((0, 1.0)))))
+      Instance(0.0, 1.0, Vectors.sparse(2, Seq((0, 0.0)))),
+      Instance(1.0, 1.0, Vectors.sparse(2, Seq((1, 1.0)))),
+      Instance(0.0, 1.0, Vectors.sparse(2, Seq((0, 1.0)))))
     val rdd = sc.parallelize(arr)
 
     val dt = new DecisionTreeClassifier()
@@ -301,7 +301,7 @@ class OptimizedDecisionTreeClassifierSuite extends MLTest with DefaultReadWriteT
 
     MLTestingUtils.checkCopyAndUids(dt, newTree)
 
-    testTransformer[(Vector, Double)](newData, newTree,
+    testTransformer[(Vector, Double, Double)](newData, newTree,
       "prediction", "rawPrediction", "probability") {
       case Row(pred: Double, rawPred: Vector, probPred: Vector) =>
         assert(pred === rawPred.argmax,
@@ -332,11 +332,11 @@ class OptimizedDecisionTreeClassifierSuite extends MLTest with DefaultReadWriteT
 
   test("training with 1-category categorical feature") {
     val data = sc.parallelize(Seq(
-      LabeledPoint(0, Vectors.dense(0, 2, 3)),
-      LabeledPoint(1, Vectors.dense(0, 3, 1)),
-      LabeledPoint(0, Vectors.dense(0, 2, 2)),
-      LabeledPoint(1, Vectors.dense(0, 3, 9)),
-      LabeledPoint(0, Vectors.dense(0, 2, 6))
+      Instance(0, 1.0, Vectors.dense(0, 2, 3)),
+      Instance(1, 1.0, Vectors.dense(0, 3, 1)),
+      Instance(0, 1.0, Vectors.dense(0, 2, 2)),
+      Instance(1, 1.0, Vectors.dense(0, 3, 9)),
+      Instance(0, 1.0, Vectors.dense(0, 2, 6))
     ))
     val df = OptimizedTreeTests.setMetadata(data, Map(0 -> 1), 2)
     val dt = new OptimizedDecisionTreeClassifier().setMaxDepth(3)
@@ -414,15 +414,19 @@ private[ml] object OptimizedDecisionTreeClassifierSuite extends SparkFunSuite {
    * Convert the old tree to the new format, compare them, and fail if they are not exactly equal.
    */
   def compareAPIs(
-      data: RDD[LabeledPoint],
+      instances: RDD[Instance],
       dt: DecisionTreeClassifier,
       odt: OptimizedDecisionTreeClassifier,
       categoricalFeatures: Map[Int, Int],
       numClasses: Int): Unit = {
-    val numFeatures = data.first().features.size
-    val newData: DataFrame = OptimizedTreeTests.setMetadata(data, categoricalFeatures, numClasses)
+    val numFeatures = instances.first().features.size
+    val oldDataPoints = instances.map(p => LabeledPoint(p.label, p.features))
+
+    val newData: DataFrame = OptimizedTreeTests.setMetadataForLabeledPoints(oldDataPoints, categoricalFeatures, numClasses)
+    val optimizedData: DataFrame = OptimizedTreeTests.setMetadata(instances, categoricalFeatures, numClasses)
+
     val newTree = dt.fit(newData)
-    val optimizedTree = odt.fit(newData)
+    val optimizedTree = odt.fit(optimizedData)
     // Use parent from newTree since this is not checked anyways.
     OptimizedTreeTests.checkEqual(newTree, optimizedTree)
     assert(newTree.numFeatures === numFeatures)

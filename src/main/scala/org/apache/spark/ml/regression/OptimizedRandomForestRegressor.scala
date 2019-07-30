@@ -151,8 +151,8 @@ class OptimizedRandomForestRegressor @Since("1.4.0") (@Since("1.4.0") override v
   override protected def train(dataset: Dataset[_]): OptimizedRandomForestRegressionModel = instrumented { instr =>
     val categoricalFeatures: Map[Int, Int] =
       MetadataUtils.getCategoricalFeatures(dataset.schema($(featuresCol)))
-    val oldDataset: RDD[Instance] = dataset.select(col($(labelCol)), col($(featuresCol))).rdd.map {
-      case Row(label: Double, features: Vector) => Instance(label, 1.0, features)
+    val oldDataset: RDD[Instance] = dataset.select(col($(labelCol)), col($(featuresCol)), col($(weightCol))).rdd.map {
+      case Row(label: Double, features: Vector, weight: Double) => Instance(label, weight, features)
     }
 
     val strategy =

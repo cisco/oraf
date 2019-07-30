@@ -84,17 +84,24 @@ import scala.util.{Random, Try}
 private[spark] object OptimizedRandomForest extends Logging {
 
   def runWithLabeledPoints(
-       oldInput: RDD[LabeledPoint],
-       strategy: OldStrategy,
-       numTrees: Int,
-       featureSubsetStrategy: String,
-       seed: Long,
-       instr: Option[Instrumentation],
-       prune: Boolean = true,
-       parentUID: Option[String] = None,
-       computeStatistics: Boolean = false)
-  : (Array[OptimizedDecisionTreeModel], Option[TrainingStatistics]) = {
-    val input = oldInput.map(labeledPoint => Instance(labeledPoint.label, 1.0, labeledPoint.features))
+                            oldInput: RDD[LabeledPoint],
+                            strategy: OldStrategy,
+                            numTrees: Int,
+                            featureSubsetStrategy: String,
+                            seed: Long,
+                            instr: Option[Instrumentation],
+                            prune: Boolean = true,
+                            parentUID: Option[String] = None,
+                            computeStatistics: Boolean = false,
+                            sampleWeights: Option[RDD[Double]] = None): (Array[OptimizedDecisionTreeModel], Option[TrainingStatistics]) = {
+    val input = sampleWeights.map(weightsRdd => {
+      oldInput.zip(weightsRdd).map {
+        case (labeledPoint, weight) => Instance(labeledPoint.label, weight, labeledPoint.features)
+      }
+    }).getOrElse {
+      oldInput.map(labeledPoint => Instance(labeledPoint.label, 1.0, labeledPoint.features))
+    }
+
     run(input, strategy, numTrees, featureSubsetStrategy, seed, instr, prune, parentUID, computeStatistics)
   }
 
@@ -337,7 +344,7 @@ private[spark] object OptimizedRandomForest extends Logging {
             .map(treeId => (treeId, nodeIdsForTree(treeId)))
             .filter { case (treeId, nodeId) => nodeSetsBc.value(treeId).contains(nodeId) }
             .map { case (treeId, nodeId) =>
-              ((treeId, nodeId), (baggedPoint.datum, baggedPoint.subsampleWeights(treeId)))
+              ((treeId, nodeId), (baggedPoint.datum, baggedPoint.subsampleWeights(treeId) * baggedPoint.datum.sampleWeight))
             }
       }
     }
@@ -669,7 +676,7 @@ private[spark] object OptimizedRandomForest extends Logging {
       if (nodeInfo != null) {
         val aggNodeIndex = nodeInfo.nodeIndexInGroup
         val featuresForNode = nodeInfo.featureSubset
-        val instanceWeight = baggedPoint.subsampleWeights(treeIndex)
+        val instanceWeight = baggedPoint.subsampleWeights(treeIndex) * baggedPoint.datum.sampleWeight
         if (metadata.unorderedFeatures.isEmpty) {
           orderedBinSeqOp(agg(aggNodeIndex), baggedPoint.datum, instanceWeight, featuresForNode)
         } else {

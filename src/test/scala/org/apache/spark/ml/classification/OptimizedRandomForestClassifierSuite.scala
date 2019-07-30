@@ -20,9 +20,9 @@
 package org.apache.spark.ml.classification
 
 import org.apache.spark.SparkFunSuite
-import org.apache.spark.ml.feature.LabeledPoint
+import org.apache.spark.ml.feature.{Instance, LabeledPoint}
 import org.apache.spark.ml.linalg.{Vector, Vectors}
-import org.apache.spark.ml.tree.impl.{OptimizedTreeTests, TreeTests}
+import org.apache.spark.ml.tree.impl.{OptimizedRandomForestSuite, OptimizedTreeTests, TreeTests}
 import org.apache.spark.ml.util.{DefaultReadWriteTest, MLTest, MLTestingUtils}
 import org.apache.spark.mllib.regression.{LabeledPoint => OldLabeledPoint}
 import org.apache.spark.mllib.tree.configuration.{Algo => OldAlgo}
@@ -39,17 +39,15 @@ class OptimizedRandomForestClassifierSuite extends MLTest with DefaultReadWriteT
   import OptimizedRandomForestClassifierSuite.compareAPIs
   import testImplicits._
 
-  private var orderedLabeledPoints50_1000: RDD[LabeledPoint] = _
-  private var orderedLabeledPoints5_20: RDD[LabeledPoint] = _
+  private var orderedInstances50_1000: RDD[Instance] = _
+  private var orderedInstances5_20: RDD[Instance] = _
 
   override def beforeAll() {
     super.beforeAll()
-    orderedLabeledPoints50_1000 =
-      sc.parallelize(EnsembleTestHelper.generateOrderedLabeledPoints(numFeatures = 50, 1000))
-        .map(_.asML)
-    orderedLabeledPoints5_20 =
-      sc.parallelize(EnsembleTestHelper.generateOrderedLabeledPoints(numFeatures = 5, 20))
-        .map(_.asML)
+    orderedInstances50_1000 =
+      sc.parallelize(OptimizedRandomForestSuite.generateOrderedInstances(numFeatures = 50, 1000))
+    orderedInstances5_20 =
+      sc.parallelize(OptimizedRandomForestSuite.generateOrderedInstances(numFeatures = 5, 20))
   }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -71,7 +69,7 @@ class OptimizedRandomForestClassifierSuite extends MLTest with DefaultReadWriteT
       .setNumTrees(1)
       .setFeatureSubsetStrategy("auto")
       .setSeed(123)
-    compareAPIs(orderedLabeledPoints50_1000, newRF, optimizedRF, categoricalFeatures, numClasses)
+    compareAPIs(orderedInstances50_1000, newRF, optimizedRF, categoricalFeatures, numClasses)
   }
 
   test("Binary classification with continuous features:" +
@@ -92,10 +90,10 @@ class OptimizedRandomForestClassifierSuite extends MLTest with DefaultReadWriteT
 
   test("alternating categorical and continuous features with multiclass labels to test indexing") {
     val arr = Array(
-      LabeledPoint(0.0, Vectors.dense(1.0, 0.0, 0.0, 3.0, 1.0)),
-      LabeledPoint(1.0, Vectors.dense(0.0, 1.0, 1.0, 1.0, 2.0)),
-      LabeledPoint(0.0, Vectors.dense(2.0, 0.0, 0.0, 6.0, 3.0)),
-      LabeledPoint(2.0, Vectors.dense(0.0, 2.0, 1.0, 3.0, 2.0))
+      Instance(0.0, 1.0, Vectors.dense(1.0, 0.0, 0.0, 3.0, 1.0)),
+      Instance(1.0, 1.0, Vectors.dense(0.0, 1.0, 1.0, 1.0, 2.0)),
+      Instance(0.0, 1.0, Vectors.dense(2.0, 0.0, 0.0, 6.0, 3.0)),
+      Instance(2.0, 1.0, Vectors.dense(0.0, 2.0, 1.0, 3.0, 2.0))
     )
     val rdd = sc.parallelize(arr)
     val categoricalFeatures = Map(0 -> 3, 2 -> 2, 4 -> 4)
@@ -118,7 +116,7 @@ class OptimizedRandomForestClassifierSuite extends MLTest with DefaultReadWriteT
 
   // Skip test: Different random generators are created during local training
   ignore("subsampling rate in RandomForest") {
-    val rdd = orderedLabeledPoints5_20
+    val rdd = orderedInstances5_20
     val categoricalFeatures = Map.empty[Int, Int]
     val numClasses = 2
 
@@ -144,7 +142,7 @@ class OptimizedRandomForestClassifierSuite extends MLTest with DefaultReadWriteT
   }
 
   test("predictRaw and predictProbability") {
-    val rdd = orderedLabeledPoints5_20
+    val rdd = orderedInstances5_20
     val rf = new OptimizedRandomForestClassifier()
       .setImpurity("Gini")
       .setMaxDepth(3)
@@ -158,7 +156,7 @@ class OptimizedRandomForestClassifierSuite extends MLTest with DefaultReadWriteT
 
     MLTestingUtils.checkCopyAndUids(rf, model)
 
-    testTransformer[(Vector, Double)](df, model, "prediction", "rawPrediction") {
+    testTransformer[(Vector, Double, Double)](df, model, "prediction", "rawPrediction") {
       case Row(pred: Double, rawPred: Vector) =>
       assert(pred === rawPred.argmax,
         s"Expected prediction $pred but calculated ${rawPred.argmax} from rawPrediction.")
@@ -169,7 +167,7 @@ class OptimizedRandomForestClassifierSuite extends MLTest with DefaultReadWriteT
   }
 
   test("prediction on single instance") {
-    val rdd = orderedLabeledPoints5_20
+    val rdd = orderedInstances5_20
     val rf = new OptimizedRandomForestClassifier()
       .setImpurity("Gini")
       .setMaxDepth(3)
@@ -230,18 +228,22 @@ private object OptimizedRandomForestClassifierSuite extends SparkFunSuite {
     * Convert the old model to the new format, compare them, and fail if they are not exactly equal.
     */
   def compareAPIs(
-                   data: RDD[LabeledPoint],
+                   data: RDD[Instance],
                    rf: RandomForestClassifier,
                    orf: OptimizedRandomForestClassifier,
                    categoricalFeatures: Map[Int, Int],
                    numClasses: Int): Unit = {
     val numFeatures = data.first().features.size
+    val oldPoints = data.map(i => LabeledPoint(i.label, i.features))
+
     val newData: DataFrame = OptimizedTreeTests.setMetadata(data, categoricalFeatures, numClasses)
-    val newModel = rf.fit(newData)
+    val oldData: DataFrame = OptimizedTreeTests.setMetadataForLabeledPoints(oldPoints, categoricalFeatures, numClasses)
+
+    val oldModel = rf.fit(oldData)
     val optimizedModel = orf.fit(newData)
 
     // Use parent from newTree since this is not checked anyways.
-    OptimizedTreeTests.checkEqualOldClassification(newModel, optimizedModel)
+    OptimizedTreeTests.checkEqualOldClassification(oldModel, optimizedModel)
     assert(optimizedModel.hasParent)
     assert(!optimizedModel.trees.head.asInstanceOf[OptimizedDecisionTreeClassificationModel].hasParent)
     assert(optimizedModel.numClasses === numClasses)
