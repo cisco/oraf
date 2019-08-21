@@ -94,9 +94,10 @@ private class OptimizedRandomForest (
     * @param input Training data: RDD of [[org.apache.spark.mllib.regression.LabeledPoint]].
     * @return RandomForestModel that can be used for prediction.
     */
-  def run(input: RDD[LabeledPoint]): (Array[NewDTModel], Option[TrainingStatistics]) = {
+  def run(input: RDD[LabeledPoint],
+          sampleWeights: Option[RDD[Double]]): (Array[NewDTModel], Option[TrainingStatistics]) = {
     NewRandomForest.runWithLabeledPoints(input.map(_.asML), strategy, numTrees,
-      featureSubsetStrategy, seed.toLong, None, prune = true, None, computeStatistics = true)
+      featureSubsetStrategy, seed.toLong, None, prune = true, None, computeStatistics = true, sampleWeights = sampleWeights)
   }
 }
 
@@ -124,11 +125,12 @@ object OptimizedRandomForest extends Serializable with Logging {
                        strategy: OptimizedForestStrategy,
                        numTrees: Int,
                        featureSubsetStrategy: String,
-                       seed: Int): OptimizedRandomForestClassificationModel = {
+                       seed: Int,
+                       sampleWeights: Option[RDD[Double]]): OptimizedRandomForestClassificationModel = {
     require(strategy.algo == Classification,
       s"RandomForest.trainClassifier given Strategy with invalid algo: ${strategy.algo}")
     val rf = new OptimizedRandomForest(strategy, numTrees, featureSubsetStrategy, seed)
-    val (trees, _) = rf.run(input)
+    val (trees, _) = rf.run(input, sampleWeights)
 
     val classificationTrees = trees.map(_.asInstanceOf[OptimizedDecisionTreeClassificationModel])
     val numFeatures = input.first().features.size
@@ -172,11 +174,12 @@ object OptimizedRandomForest extends Serializable with Logging {
                        impurity: String,
                        maxDepth: Int,
                        maxBins: Int,
-                       seed: Int = Utils.random.nextInt()): OptimizedRandomForestClassificationModel = {
+                       seed: Int = Utils.random.nextInt(),
+                       sampleWeights: Option[RDD[Double]]): OptimizedRandomForestClassificationModel = {
     val impurityType = Impurities.fromString(impurity)
     val strategy = new OptimizedForestStrategy(Classification, impurityType, maxDepth,
       numClasses, maxBins, Sort, categoricalFeaturesInfo)
-    trainClassifier(input, strategy, numTrees, featureSubsetStrategy, seed)
+    trainClassifier(input, strategy, numTrees, featureSubsetStrategy, seed, sampleWeights)
   }
 
   /**
@@ -192,10 +195,11 @@ object OptimizedRandomForest extends Serializable with Logging {
                        impurity: String,
                        maxDepth: Int,
                        maxBins: Int,
-                       seed: Int): OptimizedRandomForestClassificationModel = {
+                       seed: Int,
+                       sampleWeights: Option[RDD[Double]]): OptimizedRandomForestClassificationModel = {
     trainClassifier(input.rdd, numClasses,
       categoricalFeaturesInfo.asInstanceOf[java.util.Map[Int, Int]].asScala.toMap,
-      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins, seed)
+      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins, seed, sampleWeights)
   }
 
   /**
@@ -219,11 +223,12 @@ object OptimizedRandomForest extends Serializable with Logging {
                       strategy: OptimizedForestStrategy,
                       numTrees: Int,
                       featureSubsetStrategy: String,
-                      seed: Int): OptimizedRandomForestRegressionModel = {
+                      seed: Int,
+                      sampleWeights: Option[RDD[Double]]): OptimizedRandomForestRegressionModel = {
     require(strategy.algo == Regression,
       s"RandomForest.trainRegressor given Strategy with invalid algo: ${strategy.algo}")
     val rf = new OptimizedRandomForest(strategy, numTrees, featureSubsetStrategy, seed)
-    val (trees, _) = rf.run(input)
+    val (trees, _) = rf.run(input, sampleWeights)
 
     val regressionTrees = trees.map(_.asInstanceOf[OptimizedDecisionTreeRegressionModel])
     val numFeatures = input.first().features.size
@@ -264,12 +269,13 @@ object OptimizedRandomForest extends Serializable with Logging {
                       impurity: String,
                       maxDepth: Int,
                       maxBins: Int,
-                      seed: Int = Utils.random.nextInt())
+                      seed: Int = Utils.random.nextInt(),
+                      sampleWeights: Option[RDD[Double]])
   : OptimizedRandomForestRegressionModel = {
     val impurityType = Impurities.fromString(impurity)
     val strategy = new OptimizedForestStrategy(Regression, impurityType, maxDepth,
       0, maxBins, Sort, categoricalFeaturesInfo)
-    trainRegressor(input, strategy, numTrees, featureSubsetStrategy, seed)
+    trainRegressor(input, strategy, numTrees, featureSubsetStrategy, seed, sampleWeights)
   }
 
   /**
@@ -284,10 +290,11 @@ object OptimizedRandomForest extends Serializable with Logging {
                       impurity: String,
                       maxDepth: Int,
                       maxBins: Int,
-                      seed: Int): OptimizedRandomForestRegressionModel = {
+                      seed: Int,
+                      sampleWeights: Option[RDD[Double]]): OptimizedRandomForestRegressionModel = {
     trainRegressor(input.rdd,
       categoricalFeaturesInfo.asInstanceOf[java.util.Map[Int, Int]].asScala.toMap,
-      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins, seed)
+      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins, seed, sampleWeights)
   }
 
   @Since("1.2.0")
@@ -296,12 +303,13 @@ object OptimizedRandomForest extends Serializable with Logging {
                                      strategy: OptimizedForestStrategy,
                                      numTrees: Int,
                                      featureSubsetStrategy: String,
-                                     seed: Int)
+                                     seed: Int,
+                                     sampleWeights: Option[RDD[Double]])
   : (OptimizedRandomForestClassificationModel, TrainingStatistics) = {
     require(strategy.algo == Classification,
       s"RandomForest.trainClassifier given Strategy with invalid algo: ${strategy.algo}")
     val rf = new OptimizedRandomForest(strategy, numTrees, featureSubsetStrategy, seed)
-    val (trees, statistics) = rf.run(input)
+    val (trees, statistics) = rf.run(input, sampleWeights)
 
     val classificationTrees = trees.map(_.asInstanceOf[OptimizedDecisionTreeClassificationModel])
     val numFeatures = input.first().features.size
@@ -347,12 +355,13 @@ object OptimizedRandomForest extends Serializable with Logging {
                                      impurity: String,
                                      maxDepth: Int,
                                      maxBins: Int,
-                                     seed: Int = Utils.random.nextInt())
+                                     seed: Int = Utils.random.nextInt(),
+                                     sampleWeights: Option[RDD[Double]])
   : (OptimizedRandomForestClassificationModel, TrainingStatistics) = {
     val impurityType = Impurities.fromString(impurity)
     val strategy = new OptimizedForestStrategy(Classification, impurityType, maxDepth,
       numClasses, maxBins, Sort, categoricalFeaturesInfo)
-    trainClassifierWithStatistics(input, strategy, numTrees, featureSubsetStrategy, seed)
+    trainClassifierWithStatistics(input, strategy, numTrees, featureSubsetStrategy, seed, sampleWeights)
   }
 
   /**
@@ -368,10 +377,11 @@ object OptimizedRandomForest extends Serializable with Logging {
                                      impurity: String,
                                      maxDepth: Int,
                                      maxBins: Int,
-                                     seed: Int): (OptimizedRandomForestClassificationModel, TrainingStatistics) = {
+                                     seed: Int,
+                                     sampleWeights: Option[RDD[Double]]): (OptimizedRandomForestClassificationModel, TrainingStatistics) = {
     trainClassifierWithStatistics(input.rdd, numClasses,
       categoricalFeaturesInfo.asInstanceOf[java.util.Map[Int, Int]].asScala.toMap,
-      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins, seed)
+      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins, seed, sampleWeights)
   }
 
   /**
@@ -395,12 +405,13 @@ object OptimizedRandomForest extends Serializable with Logging {
                                     strategy: OptimizedForestStrategy,
                                     numTrees: Int,
                                     featureSubsetStrategy: String,
-                                    seed: Int)
+                                    seed: Int,
+                                    sampleWeights: Option[RDD[Double]])
   : (OptimizedRandomForestRegressionModel, TrainingStatistics) = {
     require(strategy.algo == Regression,
       s"RandomForest.trainRegressor given Strategy with invalid algo: ${strategy.algo}")
     val rf = new OptimizedRandomForest(strategy, numTrees, featureSubsetStrategy, seed)
-    val (trees, statistics) = rf.run(input)
+    val (trees, statistics) = rf.run(input, sampleWeights)
 
     val regressionTrees = trees.map(_.asInstanceOf[OptimizedDecisionTreeRegressionModel])
     val numFeatures = input.first().features.size
@@ -442,12 +453,13 @@ object OptimizedRandomForest extends Serializable with Logging {
                                     impurity: String,
                                     maxDepth: Int,
                                     maxBins: Int,
-                                    seed: Int = Utils.random.nextInt())
+                                    seed: Int = Utils.random.nextInt(),
+                                    sampleWeights: Option[RDD[Double]])
   : (OptimizedRandomForestRegressionModel, TrainingStatistics) = {
     val impurityType = Impurities.fromString(impurity)
     val strategy = new OptimizedForestStrategy(Regression, impurityType, maxDepth,
       0, maxBins, Sort, categoricalFeaturesInfo)
-    trainRegressorWithStatistics(input, strategy, numTrees, featureSubsetStrategy, seed)
+    trainRegressorWithStatistics(input, strategy, numTrees, featureSubsetStrategy, seed, sampleWeights)
   }
 
   /**
@@ -462,10 +474,11 @@ object OptimizedRandomForest extends Serializable with Logging {
                                     impurity: String,
                                     maxDepth: Int,
                                     maxBins: Int,
-                                    seed: Int): (OptimizedRandomForestRegressionModel, TrainingStatistics) = {
+                                    seed: Int,
+                                    sampleWeights: Option[RDD[Double]]): (OptimizedRandomForestRegressionModel, TrainingStatistics) = {
     trainRegressorWithStatistics(input.rdd,
       categoricalFeaturesInfo.asInstanceOf[java.util.Map[Int, Int]].asScala.toMap,
-      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins, seed)
+      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins, seed, sampleWeights)
   }
 
   /**
