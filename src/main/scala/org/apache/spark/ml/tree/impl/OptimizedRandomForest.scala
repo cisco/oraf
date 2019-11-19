@@ -813,7 +813,7 @@ private[spark] object OptimizedRandomForest extends Logging {
 
         // transform nodeStatsAggregators array to (nodeIndex, nodeAggregateStats) pairs,
         // which can be combined with other partition using `reduceByKey`
-        val indexSeq :SeqView[(OptimizedDTStatsAggregator, Int),Array[(OptimizedDTStatsAggregator, Int)]] = nodeStatsAggregators.view.zipWithIndex
+        val indexSeq: SeqView[(OptimizedDTStatsAggregator, Int), Array[(OptimizedDTStatsAggregator, Int)]] = nodeStatsAggregators.view.zipWithIndex
         indexSeq.map(_.swap).iterator
       }
     }
