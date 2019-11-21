@@ -794,7 +794,8 @@ private[spark] object OptimizedRandomForest extends Logging {
 
         // transform nodeStatsAggregators array to (nodeIndex, nodeAggregateStats) pairs,
         // which can be combined with other partition using `reduceByKey`
-        nodeStatsAggregators.view.zipWithIndex.map(_.swap).iterator
+        val indexSeq: SeqView[(OptimizedDTStatsAggregator, Int), Array[(OptimizedDTStatsAggregator, Int)]] = nodeStatsAggregators.view.zipWithIndex
+        indexSeq.map(_.swap).iterator
       }
     } else {
       input.mapPartitions { points =>
@@ -812,7 +813,8 @@ private[spark] object OptimizedRandomForest extends Logging {
 
         // transform nodeStatsAggregators array to (nodeIndex, nodeAggregateStats) pairs,
         // which can be combined with other partition using `reduceByKey`
-        nodeStatsAggregators.view.zipWithIndex.map(_.swap).iterator
+        val indexSeq: SeqView[(OptimizedDTStatsAggregator, Int), Array[(OptimizedDTStatsAggregator, Int)]] = nodeStatsAggregators.view.zipWithIndex
+        indexSeq.map(_.swap).iterator
       }
     }
 
