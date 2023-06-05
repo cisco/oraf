@@ -40,7 +40,7 @@ import org.apache.spark.rdd.RDD
  *                        Same length as LabeledPoint.features, but values are bin indices.
  */
 class OptimizedTreePoint(label: Double, binnedFeatures: Array[Int], val sampleWeight: Double)
-  extends TreePoint(label, binnedFeatures) with Serializable {
+  extends TreePoint(label, binnedFeatures, sampleWeight) with Serializable {
 }
 
 object OptimizedTreePoint {

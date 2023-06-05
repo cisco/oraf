@@ -108,14 +108,14 @@ class OptimizedDTStatsAggregator(
     */
   def update(featureIndex: Int, binIndex: Int, label: Double, instanceWeight: Double): Unit = {
     val i = featureOffsets(featureIndex) + binIndex * statsSize
-    impurityAggregator.update(allStats, i, label, instanceWeight)
+    impurityAggregator.update(allStats, i, label, 1, instanceWeight)
   }
 
   /**
     * Update the parent node stats using the given label.
     */
   def updateParent(label: Double, instanceWeight: Double): Unit = {
-    impurityAggregator.update(parentStats, 0, label, instanceWeight)
+    impurityAggregator.update(parentStats, 0, label, 1, instanceWeight)
   }
 
   /**
@@ -130,8 +130,7 @@ class OptimizedDTStatsAggregator(
                      binIndex: Int,
                      label: Double,
                      instanceWeight: Double): Unit = {
-    impurityAggregator.update(allStats, featureOffset + binIndex * statsSize,
-      label, instanceWeight)
+    impurityAggregator.update(allStats, featureOffset + binIndex * statsSize, label, 1, instanceWeight)
   }
 
   /**

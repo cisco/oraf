@@ -44,6 +44,7 @@ import scala.util.Try
 class OptimizedDecisionTreeMetadata(
                                      numFeatures: Int,
                                      numExamples: Long,
+                                     weightedNumExamples: Double,
                                      numClasses: Int,
                                      maxBins: Int,
                                      featureArity: Map[Int, Int],
@@ -53,10 +54,27 @@ class OptimizedDecisionTreeMetadata(
                                      quantileStrategy: QuantileStrategy,
                                      maxDepth: Int,
                                      minInstancesPerNode: Int,
+                                     minWeightFractionPerNode: Double,
                                      minInfoGain: Double,
                                      numTrees: Int,
-                                     numFeaturesPerNode: Int) extends DecisionTreeMetadata(numFeatures,
-  numExamples, numClasses, maxBins, featureArity, unorderedFeatures, numBins, impurity, quantileStrategy, maxDepth, minInstancesPerNode, minInfoGain, numTrees, numFeaturesPerNode) with Serializable {
+                                     numFeaturesPerNode: Int) extends DecisionTreeMetadata(
+  numFeatures,
+  numExamples,
+  weightedNumExamples,
+  numClasses,
+  maxBins,
+  featureArity,
+  unorderedFeatures,
+  numBins,
+  impurity,
+  quantileStrategy,
+  maxDepth,
+  minInstancesPerNode,
+  minWeightFractionPerNode,
+  minInfoGain,
+  numTrees,
+  numFeaturesPerNode
+) with Serializable {
 }
 
 object OptimizedDecisionTreeMetadata extends Logging {
@@ -78,7 +96,11 @@ object OptimizedDecisionTreeMetadata extends Logging {
     }
     require(numFeatures > 0, s"DecisionTree requires number of features > 0, " +
       s"but was given an empty features vector")
-    val numExamples = input.count()
+    val (numExamples, weightSum) = input.aggregate((0L, 0.0))(
+      seqOp = (cw, instance) => (cw._1 + 1L, cw._2 + instance.weight),
+      combOp = (cw1, cw2) => (cw1._1 + cw2._1, cw1._2 + cw2._2)
+    )
+
     val numClasses = strategy.algo match {
       case Classification => strategy.numClasses
       case Regression => 0
@@ -169,10 +191,11 @@ object OptimizedDecisionTreeMetadata extends Logging {
         }
     }
 
-    new OptimizedDecisionTreeMetadata(numFeatures, numExamples, numClasses, numBins.max,
-      strategy.categoricalFeaturesInfo, unorderedFeatures.toSet, numBins,
+    new OptimizedDecisionTreeMetadata(numFeatures, numExamples, weightSum, numClasses,
+      numBins.max, strategy.categoricalFeaturesInfo, unorderedFeatures.toSet, numBins,
       strategy.impurity, strategy.quantileCalculationStrategy, strategy.maxDepth,
-      strategy.minInstancesPerNode, strategy.minInfoGain, numTrees, numFeaturesPerNode)
+      strategy.minInstancesPerNode, strategy.minWeightFractionPerNode, strategy.minInfoGain,
+      numTrees, numFeaturesPerNode)
   }
 
   /**

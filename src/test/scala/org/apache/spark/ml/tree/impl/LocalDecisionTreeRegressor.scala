@@ -42,22 +42,21 @@ private[impl] final class LocalDecisionTreeRegressor(override val uid: String)
   def this() = this(Identifiable.randomUID("local_dtr"))
 
   // Override parameter setters from parent trait for Java API compatibility.
-  override def setMaxDepth(value: Int): this.type = super.setMaxDepth(value)
+  def setMaxDepth(value: Int): this.type = set(maxDepth, value)
 
-  override def setMaxBins(value: Int): this.type = super.setMaxBins(value)
+  def setMaxBins(value: Int): this.type = set(maxBins, value)
 
-  override def setMinInstancesPerNode(value: Int): this.type =
-    super.setMinInstancesPerNode(value)
+  def setMinInstancesPerNode(value: Int): this.type = set(minInstancesPerNode, value)
 
-  override def setMinInfoGain(value: Double): this.type = super.setMinInfoGain(value)
+  def setMinInfoGain(value: Double): this.type = set(minInfoGain, value)
 
-  override def setMaxMemoryInMB(value: Int): this.type = super.setMaxMemoryInMB(value)
+  def setMaxMemoryInMB(value: Int): this.type = set(maxMemoryInMB, value)
 
-  override def setImpurity(value: String): this.type = super.setImpurity(value)
+  def setImpurity(value: String): this.type = set(impurity, value)
 
-  override def setSeed(value: Long): this.type = super.setSeed(value)
+  def setSeed(value: Long): this.type = set(seed, value)
 
-  override def copy(extra: ParamMap): LocalDecisionTreeRegressor = defaultCopy(extra)
+  def copy(extra: ParamMap): LocalDecisionTreeRegressor = defaultCopy(extra)
 
   override protected def train(dataset: Dataset[_]): OptimizedDecisionTreeRegressionModel = {
     val categoricalFeatures: Map[Int, Int] =

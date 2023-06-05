@@ -23,9 +23,6 @@ import org.apache.spark.SparkFunSuite
 import org.apache.spark.ml.feature.{Instance, LabeledPoint}
 import org.apache.spark.ml.tree.impl.{OptimizedRandomForestSuite, OptimizedTreeTests}
 import org.apache.spark.ml.util.{DefaultReadWriteTest, MLTest, MLTestingUtils}
-import org.apache.spark.mllib.regression.{LabeledPoint => OldLabeledPoint}
-import org.apache.spark.mllib.tree.configuration.{Algo => OldAlgo}
-import org.apache.spark.mllib.tree.{EnsembleTestHelper, RandomForest => OldRandomForest}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 
@@ -49,7 +46,7 @@ class OptimizedRandomForestRegressorSuite extends MLTest with DefaultReadWriteTe
   // Tests calling train()
   /////////////////////////////////////////////////////////////////////////////
 
-  def regressionTestWithContinuousFeatures(rf: RandomForestRegressor, orf: OptimizedRandomForestRegressor) {
+  def regressionTestWithContinuousFeatures(rf: RandomForestRegressor, orf: OptimizedRandomForestRegressor): Unit = {
     val categoricalFeaturesInfo = Map.empty[Int, Int]
     val newRF = rf
       .setImpurity("variance")
@@ -68,6 +65,7 @@ class OptimizedRandomForestRegressorSuite extends MLTest with DefaultReadWriteTe
     compareAPIs(orderedInstances50_1000, newRF, optimizedRF, categoricalFeaturesInfo)
   }
 
+  // Fixed
   test("Regression with continuous features:" +
     " comparing DecisionTree vs. RandomForest(numTrees = 1)") {
     val rf = new RandomForestRegressor()

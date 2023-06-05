@@ -22,12 +22,8 @@ package org.apache.spark.ml.classification
 import org.apache.spark.SparkFunSuite
 import org.apache.spark.ml.feature.{Instance, LabeledPoint}
 import org.apache.spark.ml.linalg.{Vector, Vectors}
-import org.apache.spark.ml.tree.impl.{OptimizedRandomForestSuite, OptimizedTreeTests, TreeTests}
+import org.apache.spark.ml.tree.impl.{OptimizedRandomForestSuite, OptimizedTreeTests}
 import org.apache.spark.ml.util.{DefaultReadWriteTest, MLTest, MLTestingUtils}
-import org.apache.spark.mllib.regression.{LabeledPoint => OldLabeledPoint}
-import org.apache.spark.mllib.tree.configuration.{Algo => OldAlgo}
-import org.apache.spark.mllib.tree.{EnsembleTestHelper, RandomForest => OldRandomForest}
-import org.apache.spark.mllib.util.TestingUtils._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row}
 
@@ -54,7 +50,7 @@ class OptimizedRandomForestClassifierSuite extends MLTest with DefaultReadWriteT
   // Tests calling train()
   /////////////////////////////////////////////////////////////////////////////
 
-  def binaryClassificationTestWithContinuousFeatures(rf: RandomForestClassifier, orf: OptimizedRandomForestClassifier) {
+  def binaryClassificationTestWithContinuousFeatures(rf: RandomForestClassifier, orf: OptimizedRandomForestClassifier): Unit = {
     val categoricalFeatures = Map.empty[Int, Int]
     val numClasses = 2
     val newRF = rf
@@ -72,6 +68,7 @@ class OptimizedRandomForestClassifierSuite extends MLTest with DefaultReadWriteT
     compareAPIs(orderedInstances50_1000, newRF, optimizedRF, categoricalFeatures, numClasses)
   }
 
+  // Fixed
   test("Binary classification with continuous features:" +
     " comparing DecisionTree vs. RandomForest(numTrees = 1)") {
     val rf = new RandomForestClassifier()
@@ -79,6 +76,7 @@ class OptimizedRandomForestClassifierSuite extends MLTest with DefaultReadWriteT
     binaryClassificationTestWithContinuousFeatures(rf, orf)
   }
 
+  // Fixed
   test("Binary classification with continuous features and node Id cache:" +
     " comparing DecisionTree vs. RandomForest(numTrees = 1)") {
     val rf = new RandomForestClassifier()
