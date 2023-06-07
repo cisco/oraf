@@ -94,10 +94,10 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
   test("find splits for a continuous feature") {
     // find splits for normal case
     {
-      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 200000, 0, 0,
+      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 200000, 200000, 0, 0,
         Map(), Set(),
         Array(6), Gini, QuantileStrategy.Sort,
-        0, 0, 0.0, 0, 0
+        0, 0, 0.0, 0.0, 0, 0
       )
       val featureSamples = Array.fill(10000)(math.random).filter(_ != 0.0)
       val splits = OptimizedRandomForest.findSplitsForContinuousFeature(featureSamples, fakeMetadata, 0)
@@ -110,10 +110,10 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
 
     // SPARK-16957: Use midpoints for split values.
     {
-      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 8, 0, 0,
+      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 8, 8, 0, 0,
         Map(), Set(),
         Array(3), Gini, QuantileStrategy.Sort,
-        0, 0, 0.0, 0, 0
+        0, 0, 0.0, 0.0, 0, 0
       )
 
       // TODO: Why doesn't this work after filtering 0.0?
@@ -137,10 +137,10 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
     // find splits should not return identical splits
     // when there are not enough split candidates, reduce the number of splits in metadata
     {
-      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 12, 0, 0,
+      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 12, 12, 0, 0,
         Map(), Set(),
         Array(5), Gini, QuantileStrategy.Sort,
-        0, 0, 0.0, 0, 0
+        0, 0, 0.0, 0.0, 0, 0
       )
       val featureSamples = Array(1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3).map(_.toDouble)
       val splits = OptimizedRandomForest.findSplitsForContinuousFeature(featureSamples, fakeMetadata, 0)
@@ -152,10 +152,10 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
 
     // find splits when most samples close to the minimum
     {
-      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 18, 0, 0,
+      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 18, 18, 0, 0,
         Map(), Set(),
         Array(3), Gini, QuantileStrategy.Sort,
-        0, 0, 0.0, 0, 0
+        0, 0, 0.0, 0.0, 0, 0
       )
       val featureSamples = Array(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 4, 5)
         .map(_.toDouble)
@@ -166,10 +166,10 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
 
     // find splits when most samples close to the maximum
     {
-      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 17, 0, 0,
+      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 17, 17, 0, 0,
         Map(), Set(),
         Array(2), Gini, QuantileStrategy.Sort,
-        0, 0, 0.0, 0, 0
+        0, 0, 0.0, 0.0, 0, 0
       )
       val featureSamples = Array(0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2)
         .map(_.toDouble).filter(_ != 0.0)
@@ -180,10 +180,10 @@ class OptimizedRandomForestSuite extends SparkFunSuite with MLlibTestSparkContex
 
     // find splits for constant feature
     {
-      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 3, 0, 0,
+      val fakeMetadata = new OptimizedDecisionTreeMetadata(1, 3, 3, 0, 0,
         Map(), Set(),
         Array(3), Gini, QuantileStrategy.Sort,
-        0, 0, 0.0, 0, 0
+        0, 0, 0.0, 0.0, 0, 0
       )
       val featureSamples = Array(0, 0, 0).map(_.toDouble).filter(_ != 0.0)
       val featureSamplesEmpty = Array.empty[Double]

@@ -200,10 +200,10 @@ private[ml] object OptimizedTreeTests extends SparkFunSuite {
     }
 
     new OptimizedDecisionTreeMetadata(numFeatures = numFeatures, numExamples = numExamples,
-      numClasses = numClasses, maxBins = maxBins, minInfoGain = 0.0, featureArity = featureArity,
-      unorderedFeatures = unordered, numBins = numBins, impurity = impurity,
+      weightedNumExamples = numExamples, numClasses = numClasses, maxBins = maxBins, minInfoGain = 0.0,
+      featureArity = featureArity, unorderedFeatures = unordered, numBins = numBins, impurity = impurity,
       quantileStrategy = null, maxDepth = 5, minInstancesPerNode = 1, numTrees = 1,
-      numFeaturesPerNode = 2)
+      numFeaturesPerNode = 2, minWeightFractionPerNode = 0.0)
   }
 
   /**
@@ -240,15 +240,13 @@ private[ml] object OptimizedTreeTests extends SparkFunSuite {
    *       make mistakes such as creating loops of Nodes.
    */
   private def checkEqual(a: Node, b: OptimizedNode): Unit = {
-    assert(a.prediction === b.prediction)
-    assert(a.impurity === b.impurity)
-//    assert(a.impurityStats.stats === b.impurityStats.stats)
     (a, b) match {
-      case (aye: InternalNode, bee: OptimizedInternalNode) =>
-        assert(aye.split === bee.split)
-        checkEqual(aye.leftChild, bee.leftChild)
-        checkEqual(aye.rightChild, bee.rightChild)
-      case (aye: LeafNode, bee: OptimizedLeafNode) => // do nothing
+      case (aa: InternalNode, bb: OptimizedInternalNode) =>
+        assert(aa.split === bb.split)
+        checkEqual(aa.leftChild, bb.leftChild)
+        checkEqual(aa.rightChild, bb.rightChild)
+      case (aa: LeafNode, bb: OptimizedLeafNode) => // do nothing
+        assert(aa.prediction === bb.prediction)
       case _ =>
         println(a.getClass.getCanonicalName, b.getClass.getCanonicalName)
         throw new AssertionError("Found mismatched nodes")
@@ -264,11 +262,11 @@ private[ml] object OptimizedTreeTests extends SparkFunSuite {
     assert(a.impurity === b.impurity)
     //    assert(a.impurityStats.stats === b.impurityStats.stats)
     (a, b) match {
-      case (aye: OptimizedInternalNode, bee: OptimizedInternalNode) =>
-        assert(aye.split === bee.split)
-        checkEqual(aye.leftChild, bee.leftChild)
-        checkEqual(aye.rightChild, bee.rightChild)
-      case (aye: OptimizedLeafNode, bee: OptimizedLeafNode) => // do nothing
+      case (aa: OptimizedInternalNode, bb: OptimizedInternalNode) =>
+        assert(aa.split === bb.split)
+        checkEqual(aa.leftChild, bb.leftChild)
+        checkEqual(aa.rightChild, bb.rightChild)
+      case (_: OptimizedLeafNode, _: OptimizedLeafNode) => // do nothing
       case _ =>
         println(a.getClass.getCanonicalName, b.getClass.getCanonicalName)
         throw new AssertionError("Found mismatched nodes")

@@ -19,15 +19,12 @@
 
 package org.apache.spark.ml.tree.impl
 
-import java.io.IOException
-
 import org.apache.spark.Partitioner
 import org.apache.spark.internal.Logging
 import org.apache.spark.ml.classification.OptimizedDecisionTreeClassificationModel
-import org.apache.spark.ml.feature.LabeledPoint
+import org.apache.spark.ml.feature.{Instance, LabeledPoint}
 import org.apache.spark.ml.regression.OptimizedDecisionTreeRegressionModel
 import org.apache.spark.ml.tree._
-import org.apache.spark.ml.feature.Instance
 import org.apache.spark.ml.util.Instrumentation
 import org.apache.spark.mllib.tree.configuration.{Algo => OldAlgo, OptimizedForestStrategy => OldStrategy}
 import org.apache.spark.mllib.tree.impurity.ImpurityCalculator
@@ -36,6 +33,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.apache.spark.util.random.{SamplingUtils, XORShiftRandom}
 
+import java.io.IOException
 import scala.collection.{SeqView, mutable}
 import scala.util.{Random, Try}
 
@@ -174,7 +172,7 @@ private[spark] object OptimizedRandomForest extends Logging {
     val withReplacement = numTrees > 1
 
     val baggedInput = BaggedPoint
-      .convertToBaggedRDD(treeInput, strategy.subsamplingRate, numTrees, withReplacement, seed)
+      .convertToBaggedRDD(treeInput, strategy.subsamplingRate, numTrees, withReplacement, (treePoint: TreePoint) => treePoint.weight, seed = seed)
       .persist(StorageLevel.MEMORY_AND_DISK)
 
     val distributedMaxDepth = Math.min(strategy.maxDepth, 30)
@@ -340,11 +338,11 @@ private[spark] object OptimizedRandomForest extends Logging {
       pointsWithNodeIds.flatMap {
         case (baggedPoint, nodeIdsForTree) =>
           nodeSetsBc.value.keys
-            .filter(treeId => baggedPoint.subsampleWeights(treeId) > 0)
+            .filter(treeId => baggedPoint.subsampleCounts(treeId) > 0)
             .map(treeId => (treeId, nodeIdsForTree(treeId)))
             .filter { case (treeId, nodeId) => nodeSetsBc.value(treeId).contains(nodeId) }
             .map { case (treeId, nodeId) =>
-              ((treeId, nodeId), (baggedPoint.datum, baggedPoint.subsampleWeights(treeId) * baggedPoint.datum.sampleWeight))
+              ((treeId, nodeId), (baggedPoint.datum, baggedPoint.subsampleCounts(treeId) * baggedPoint.datum.sampleWeight))
             }
       }
     }
@@ -676,7 +674,7 @@ private[spark] object OptimizedRandomForest extends Logging {
       if (nodeInfo != null) {
         val aggNodeIndex = nodeInfo.nodeIndexInGroup
         val featuresForNode = nodeInfo.featureSubset
-        val instanceWeight = baggedPoint.subsampleWeights(treeIndex) * baggedPoint.datum.sampleWeight
+        val instanceWeight = baggedPoint.subsampleCounts(treeIndex) * baggedPoint.datum.sampleWeight
         if (metadata.unorderedFeatures.isEmpty) {
           orderedBinSeqOp(agg(aggNodeIndex), baggedPoint.datum, instanceWeight, featuresForNode)
         } else {
@@ -879,11 +877,11 @@ private[spark] object OptimizedRandomForest extends Logging {
 
           // enqueue left child and right child if they are not leaves
           if (!leftChildIsLeaf) {
-            addTrainingTask(node.leftChild.get, treeIndex, stats.leftImpurityCalculator.count,
+            addTrainingTask(node.leftChild.get, treeIndex, stats.leftImpurityCalculator.count.toLong,
               nodeLevel, stats.leftImpurity)
           }
           if (!rightChildIsLeaf) {
-            addTrainingTask(node.rightChild.get, treeIndex, stats.rightImpurityCalculator.count,
+            addTrainingTask(node.rightChild.get, treeIndex, stats.rightImpurityCalculator.count.toLong,
               nodeLevel, stats.rightImpurity)
           }
 
